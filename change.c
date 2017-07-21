@@ -263,30 +263,6 @@ void display(int flag_param,char *pathname)//传二维数组
                   }
                 else 
                      printf("%s\n",pathname);
-            //}           
-              /* else
-                {
-                    count=0;
-                    if((dir=opendir(pathname))==NULL)
-                        my_err("opendir",__LINE__);
-                    while((ptr=readdir(dir))!=NULL)////要排序
-                    {
-                        if(ptr->d_name[0]!='.')
-                            strcpy(arr[count++],ptr->d_name);
-                    }
-                    QUICK(arr,0,count-1);
-                    int k=0;
-                    for(i=0;i<count;i++)
-                    {
-                        printf("%s ",arr[i]);
-                        k++;
-                        if(k%5==0)
-                            putchar('\n');
-                    }
-                    if(k%5!=0)
-                        putchar('\n');
-                    closedir(dir);
-                }*/
         
         break;
         
@@ -308,14 +284,10 @@ void display(int flag_param,char *pathname)//传二维数组
                     }
                     if(k%5!=0)
                         putchar('\n');
-                //printf("%s ",pathname);
                     closedir(dir);
             break;
 
         case PARM_L:
-            //if(pathname[0]!='.')//不输出隐藏文件
-              //  display_attribute(buf,pathname);
-            //else 
                 count=0;
                     if(S_ISDIR(buf.st_mode))
                     {
