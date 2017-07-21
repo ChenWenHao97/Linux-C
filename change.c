@@ -36,13 +36,12 @@ void QUICK(char (*arr)[256],int p,int q);//快排!!!
 void my_err(char *err_string,int line);
 void display_attribute(struct stat buf,char *name);
 void display(int flag_param,char *pathname);//传二维数组
-void display_dir(int flag_param,char *name);
 
 int main(int argc,char *argv[])
 {
     int i,j,k=0;
     char param[10]={0};//存-a，-l
-    int flag_param=PARM_NONE;
+    int flag_param=PARM_NONE;//默认是没有
     struct stat buf;
     char name[20]={0};
     int count=0;//计数-
@@ -68,7 +67,7 @@ int main(int argc,char *argv[])
             flag_param|=PARM_L;
         else if(param[i]=='R')
             flag_param|=PARM_R;
-        else 
+        else
             break;
     }
    for(i=1;i<argc;i++)
@@ -95,17 +94,9 @@ int main(int argc,char *argv[])
              strcpy(name,argv[i]);
         if(stat(name,&buf)==-1)//获取属性
             my_err("lstat",__LINE__);
-        if(S_ISDIR(buf.st_mode))
-            {
-                //display_dir(flag_param,name);
-                display(flag_param,name);
-                i++;
-            }
-        else 
-            {
-                display(flag_param,name);
-                i++;
-            }
+        display(flag_param,name);
+        i++;
+            
     }
     return 0;
 }
@@ -244,35 +235,36 @@ void display(int flag_param,char *pathname)//传二维数组
     switch(flag_param)
     {
         case PARM_NONE:
-                if(pathname[0]!='.' && pathname[1] != '.')
-            {
-                if(S_ISDIR(buf.st_mode))
+                //if(pathname[0]!='.' )//&& pathname[1] != '.')
+                //{
+                    if(S_ISDIR(buf.st_mode))
                     
-                  {  count=0;
-                    if((dir=opendir(pathname))==NULL)
-                        my_err("opendir",__LINE__);
-                    while((ptr=readdir(dir))!=NULL)////要排序
-                    {
-                        if(ptr->d_name[0]!='.')
-                            strcpy(arr[count++],ptr->d_name);
-                    }
-                    QUICK(arr,0,count-1);
-                   int k=0;
-                    for(i=0;i<count;i++)
-                   {
-                        printf("%s  ",arr[i]);
-                        k++;
-                        if(k%5==0)
+                    { 
+                        count=0;
+                        if((dir=opendir(pathname))==NULL)
+                            my_err("opendir",__LINE__);
+                        while((ptr=readdir(dir))!=NULL)////要排序
+                        {
+                            if(ptr->d_name[0]!='.')
+                                strcpy(arr[count++],ptr->d_name);
+                        }
+                        QUICK(arr,0,count-1);
+                        int k=0;
+                        for(i=0;i<count;i++)
+                        {
+                            printf("%s  ",arr[i]);
+                            k++;
+                            if(k%5==0)
+                                putchar('\n');
+                        }
+                        if(k%5!=0)
                             putchar('\n');
-                   }
-                   if(k%5!=0)
-                    putchar('\n');
-                    closedir(dir);
+                        closedir(dir);
                   }
-                else
-                    printf("%s\n",pathname);
-            }           
-               else
+                else 
+                     printf("%s\n",pathname);
+            //}           
+              /* else
                 {
                     count=0;
                     if((dir=opendir(pathname))==NULL)
@@ -294,7 +286,7 @@ void display(int flag_param,char *pathname)//传二维数组
                     if(k%5!=0)
                         putchar('\n');
                     closedir(dir);
-                }
+                }*/
         
         break;
         
@@ -321,10 +313,9 @@ void display(int flag_param,char *pathname)//传二维数组
             break;
 
         case PARM_L:
-            if(pathname[0]!='.')//不输出隐藏文件
-                display_attribute(buf,pathname);
-            else 
-                {
+            //if(pathname[0]!='.')//不输出隐藏文件
+              //  display_attribute(buf,pathname);
+            //else 
                 count=0;
                     if(S_ISDIR(buf.st_mode))
                     {
@@ -338,65 +329,31 @@ void display(int flag_param,char *pathname)//传二维数组
                             if(arr[i][0]!='.')
                             display_attribute(buf,arr[i]);
                         }
+                         closedir(dir);
                     }
                     else
                         display_attribute(buf,pathname);
-                    closedir(dir);
-                }
+                
         break;
 
         case PARM_L+PARM_A:
                count=0;
+               if(S_ISDIR(buf.st_mode))
+               {
                 if((dir=opendir(pathname))==NULL)
                     my_err("opendir",__LINE__);
                 while((ptr=readdir(dir))!=NULL)////要排序
                         strcpy(arr[count++],ptr->d_name);
-
                 QUICK(arr,0,count-1);
-
                     for(i=0;i<count;i++)
                         display_attribute(buf,arr[i]);
-                   closedir(dir);
+               }
+               else 
+                    display_attribute(buf,pathname);
+                closedir(dir);
         break;
         default:
             break;
     }
 }
-
-//读取目录文件
-/*void display_dir(int flag_param,char *name)
-{
-    DIR *dir;//要打开的目录
-    struct dirent *ptr;//结构体蕴含文件长度，名字
-    int i=0,j;//计数
-   // struct stat buf;
-    int len;
-    if((dir=opendir(name))==NULL)
-        my_err("opendir",__LINE__);
-
-    //统计最长文件名
-   while((ptr=readdir(dir))!=NULL) 
-    {
-        if(strlen(ptr->d_name)>maxfilename)
-            maxfilename=strlen(ptr->d_name);
-    }
-    closedir(dir);
-
-    if((dir=opendir(name))==NULL)
-        my_err("opendir",__LINE__);
-    //开始把文件名存放在数组中
-    while((ptr=readdir(dir))!=NULL)
-    {
-        strcpy(arr[i],ptr->d_name);
-        len=strlen(ptr->d_name);
-        arr[i][len]='\0';
-        i++;
-    }
-
-    //对数组进行排序,按字母顺序排序
-    QUICK(arr,1,i-1);
-    for(j=0;j<i;j++)
-       display(flag_param,arr[j]);
-    closedir(dir);
-}*/
 
