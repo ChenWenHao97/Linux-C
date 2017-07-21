@@ -41,20 +41,21 @@ void display_dir(int flag_param,char *name);
 int main(int argc,char *argv[])
 {
     int i,j,k=0;
-    char param[10];//存-a，-l
+    char param[10]={0};//存-a，-l
     int flag_param=PARM_NONE;
     struct stat buf;
-    char name[20];
+    char name[20]={0};
     int count=0;//计数-
 
     for(i=1;i<argc;i++)
     {
         if(argv[i][0]=='-')//证明有参数
         {
-
             for(j=1;j<strlen(argv[i]);j++)
+            {
                 param[k++]=argv[i][j];
-            count++;
+                count++;
+            }
         }
     }
     for(i=0;i<count;i++)//权限问题
@@ -65,15 +66,18 @@ int main(int argc,char *argv[])
             flag_param|=PARM_L;
         else if(param[i]=='R')
             flag_param|=PARM_R;
+        else 
+            break;
     }
 //判断后面有没有参数
-    if((count+1)==argc)//如果没有’-‘，count=0
+    if (argc - 1 - count == 0)//if(count==0)//如果没有’-‘，count=0
     {
         strcpy(name,"./");
         display(flag_param,name);
+        return 0;
     }
-    i=1;
-    while(i < argc)
+     i=1;
+   /*while(i < argc&&count!=0)
     {
         if(argv[i][0]=='-')
         {
@@ -94,6 +98,29 @@ int main(int argc,char *argv[])
             display(flag_param,name);
             i++;
         }
+    }*/
+    while(i<argc&&count!=0)
+    {
+        if(argv[i][0]=='-')
+        {
+            i++;
+            continue;
+        }
+        //else if()
+        else
+             strcpy(name,argv[i]);
+        if(lstat(name,&buf)==-1)
+            my_err("lstat",__LINE__);
+        if(S_ISDIR(buf.st_mode))
+            {
+                display_dir(flag_param,name);
+                i++;
+            }
+        else 
+            {
+                display(flag_param,name);
+                i++;
+            }
     }
     return 0;
 }
@@ -160,9 +187,13 @@ void display_attribute(struct stat buf,char *name)
     //判断user权限
     if(buf.st_mode & S_IREAD)
         putchar('r');
-    else if(buf.st_mode & S_IWRITE)
+    else 
+        putchar('-');
+    if(buf.st_mode & S_IWRITE)
         putchar('w');
-    else if(buf.st_mode & S_IEXEC)
+    else
+        putchar('-');
+    if(buf.st_mode & S_IEXEC)
         putchar('x');
     else 
         putchar('-');
@@ -170,9 +201,13 @@ void display_attribute(struct stat buf,char *name)
     //判断group权限
     if(buf.st_mode & S_IRGRP)
         putchar('r');
-    else if(buf.st_mode & S_IWGRP)
+    else
+        putchar('-');
+     if(buf.st_mode & S_IWGRP)
         putchar('w');
-    else if(buf.st_mode & S_IXGRP)
+    else
+        putchar('-');
+     if(buf.st_mode & S_IXGRP)
         putchar('x');
     else 
         putchar('-');
@@ -180,9 +215,13 @@ void display_attribute(struct stat buf,char *name)
     //判断others权限
     if(buf.st_mode & S_IROTH)
         putchar('r');
-    else if(buf.st_mode & S_IWOTH)
+    else
+        putchar('-');
+    if(buf.st_mode & S_IWOTH)
         putchar('w');
-    else if(buf.st_mode & S_IXOTH)
+    else
+        putchar('-');
+     if(buf.st_mode & S_IXOTH)
         putchar('x');
     else
         putchar('-');
@@ -191,8 +230,8 @@ void display_attribute(struct stat buf,char *name)
     group=getgrgid(buf.st_gid);//获取groupID
 
     printf("-%2d",buf.st_nlink);//链接数
-    printf("-%8d",user->pw_name);//user;
-    printf("-%8d",group->gr_name);//group;
+    printf("-%8s",user->pw_name);//user;
+    printf("-%8s",group->gr_name);//group;
     printf("-%8d",buf.st_size);//文件大小
     printf("-%10d",buf.st_atime);//文件时间
 
@@ -208,7 +247,7 @@ void display(int flag_param,char *pathname)//传二维数组
     int count=0;
     struct stat buf;
     int i,j;
-    char name[50];//maxfilename];
+    //char name[50];//maxfilename];
     j=0;
     /*int sz = strlen(pathnames);
     for(i=0;i<sz;i++)
@@ -246,9 +285,7 @@ void display(int flag_param,char *pathname)//传二维数组
                     while((ptr=readdir(dir))!=NULL)////要排序
                     {
                         if(ptr->d_name[0]!='.')
-                        {
                             strcpy(arr[count++],ptr->d_name);
-                        }
                            // printf("%s  ",ptr->d_name);
                     }
                     QUICK(arr,0,count-1);
@@ -285,7 +322,20 @@ void display(int flag_param,char *pathname)//传二维数组
 
         case PARM_L:
             if(pathname[0]!='.')//不输出隐藏文件
-                display_attribute(buf,name);
+                display_attribute(buf,pathname);
+            else 
+                {
+                count=0;
+                if((dir=opendir(pathname))==NULL)
+                    my_err("opendir",__LINE__);
+                while((ptr=readdir(dir))!=NULL)////要排序
+                        strcpy(arr[count++],ptr->d_name);
+                    QUICK(arr,0,count-1);
+                    for(i=0;i<count;i++)
+                        display_attribute(buf,arr[i]);
+                    putchar('\n');
+                    closedir(dir);
+                }
         break;
 
         case PARM_L+PARM_A:
@@ -325,14 +375,10 @@ void display_dir(int flag_param,char *name)
         i++;
     }
     
-    //i=i-1;
     printf("%d\n", i);
     //对数组进行排序,按字母顺序排序
-    //QUICK(arr,1,i-1);
-    for(j=0;j<i;j++){
-        
-    puts(arr[j]);
+    QUICK(arr,1,i-1);
+    for(j=0;j<i;j++)
         display(flag_param,arr[j]);
-    }
 }
 
