@@ -110,7 +110,7 @@ int PART(char (*arr)[256],int p,int q)
     j=p-1;
     for(i=p;i<q;i++)
     {
-        if(arr[i][0]<arr[q][0])
+        if(strcmp(arr[i], arr[q]) < 0)//if(arr[i][0]<arr[q][0])
         {
             j++;
             swap(arr[i],arr[j]);
@@ -251,7 +251,7 @@ void display(int flag_param,char *pathname)//传二维数组
                         }
                            // printf("%s  ",ptr->d_name);
                     }
-                    QUICK(arr,1,i-1);
+                    QUICK(arr,0,count-1);
                     for(i=0;i<count;i++)
                         printf("%s ",arr[i]);
                     putchar('\n');
@@ -261,7 +261,7 @@ void display(int flag_param,char *pathname)//传二维数组
         break;
         
         case PARM_A: 
-                if((dir=opendir(name))==NULL)
+                /*if((dir=opendir(pathname))==NULL)
                     my_err("opendir",__LINE__);
                 else
                 {
@@ -269,7 +269,18 @@ void display(int flag_param,char *pathname)//传二维数组
                         printf("%s",ptr->d_name);
                 }
                 closedir(dir);
-                putchar('\n');
+                putchar('\n');*/
+                count=0;
+                if((dir=opendir(pathname))==NULL)
+                    my_err("opendir",__LINE__);
+                while((ptr=readdir(dir))!=NULL)////要排序
+                        strcpy(arr[count++],ptr->d_name);
+
+                    QUICK(arr,0,count-1);
+                    for(i=0;i<count;i++)
+                        printf("%s ",arr[i]);
+                    putchar('\n');
+                    closedir(dir);
             break;
 
         case PARM_L:
@@ -278,7 +289,7 @@ void display(int flag_param,char *pathname)//传二维数组
         break;
 
         case PARM_L+PARM_A:
-            display_attribute(buf,name);
+            display_attribute(buf,pathname);
         break;
         default:
             break;
@@ -322,9 +333,6 @@ void display_dir(int flag_param,char *name)
         
     puts(arr[j]);
         display(flag_param,arr[j]);
-
     }
-
 }
-
 
