@@ -238,12 +238,12 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
     int count=0;
     struct stat buf;
     int i,j=0;
-    char alldir[100][255];
-    int k;
+    char alldir[800][1000];
     char t[200];
     LINK *p,*q,*head=NULL;
     char *pwd;
-
+    int k;
+    
     if(stat(pathname,&buf)==-1)
     {
         my_err("lstat",__LINE__);
@@ -321,7 +321,6 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     }
                     else
                         display_attribute(buf,".",pathname);
-                
         break;
 
         case PARM_L+PARM_A:
@@ -340,6 +339,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     display_attribute(buf,".",pathname);
                 closedir(dir);
         break;
+
     case PARM_R:
                 if(lstat(pathname,&buf)==-1)
                     my_err("stat",__LINE__);
@@ -356,12 +356,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                             {
                                 p=(LINK*)malloc(sizeof(LINK));
                                 pwd=getcwd(NULL,0);
-                               if(pathname[strlen(pathname)-1]!='/') 
-                                   {
-                                       pathname[strlen(pathname)]='/';
-                                       pathname[strlen(pathname)+1]='\0';
-                                   }
-                                sprintf(p->name,"%s%s%c",pathname,ptr->d_name,'\0');
+                                sprintf(p->name,"%s/%s%c",pathname,ptr->d_name,'\0');
 
                                 count++;
                                 p->next=NULL;
@@ -402,41 +397,45 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 k=0;//记录目录个数
                     for(i=0;i<count;i++)//统计目录中目录个数
                         {
-
+                            char *move;
                             if(stat(p->name,&buf)==-1)
-                            {
                                 my_err("stat",__LINE__);
-                            }
                             
-                            if(S_ISDIR(buf.st_mode)){
-                                
-                                  strcpy(alldir[k++],p->name);
-                            }
+                            if(S_ISDIR(buf.st_mode))
+                                 {
+                                     //strcpy(alldir[k++],p->name);
+                                  move=(char*)malloc(sizeof(int)*1000);
+                                     strcpy(move,p->name);
+                                     display(flag_param,move);
+                                 }
+                            free(move);
+
                             p=p->next;
                         }
-                    if(k!=0)//如果存在目录，就递归输出
+                   /* if(k>0)//如果存在目录，就递归输出
                         {
-                            for(i=0;i<k;i++)
-                               {  
+                            for(i=0;i<k;i++) 
+                            {
                                     display(flag_param,alldir[i]);
-                               }
+                            }
+                            k=0;
                         }
-                }
+                    }*/
                q=p=head;
                 while(p!=NULL)
                 {
                     q=p->next;
                     free(p);
                     p=q;
-                    
                 }
                 break;
         default:
             break;
         }
     
+    }
 }
-void display_color(char *name)
+/*void display_color(char *name)
 {
     
-}
+}*/
