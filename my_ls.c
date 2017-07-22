@@ -17,7 +17,15 @@
 #define PARM_L 2
 #define PARM_R 4
 #define MAXLEN 80
-
+#define BLACK  "\033[30m"
+#define ORANGE  "\033[31m"
+#define GREEN  "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE  "\033[34m"
+#define PINK  "\033[35m"
+#define WHITE  "\033[37m"
+#define SKY "\033[36m"
+#define CANCEL "\033[0m"
 int maxfilename=0;
 int  filename=0;
 char arr[256][256];
@@ -32,7 +40,7 @@ void QUICK(char (*arr)[256],int p,int q);//快排!!!
 void my_err(char *err_string,int line);
 void display_attribute(struct stat buf,char *name,char*);
 void display(int flag_param,char *pathname);//传二维数组
-void display_color(char *name);
+void color(char *name);
 
 int main(int argc,char *argv[])
 {
@@ -210,16 +218,19 @@ void display_attribute(struct stat buf,char *name,char *pathname)
     user=getpwuid(bu.st_uid);//获取userID
     group=getgrgid(bu.st_gid);//获取groupID
 
-    printf("%4d",bu.st_nlink);//链接数
-    printf("%5s",user->pw_name);//user;
-    printf("%5s",group->gr_name);//group;
-    printf("%6d",bu.st_size);//文件大小
+    printf("  %-4d",bu.st_nlink);//链接数
+    printf("%-5s",user->pw_name);//user;
+    printf("%-5s",group->gr_name);//group;
+    printf("%-8d",bu.st_size);//文件大小
     char time_buf[255];
     strcpy(time_buf, ctime(&bu.st_atime));
     time_buf[strlen(time_buf)-1] = '\0';//ctime会有一个换行
-    printf("%  s",time_buf);//文件时间
+    printf("%  s  ",time_buf);//文件时间
     if(name[0]!='\0')
-        printf(" %s\n",name);
+        {
+            color(name);
+            putchar('\n');
+        }
     
     chdir(curdir);//还原原本的工作目录
     free(curdir);//释放掉空间
@@ -260,8 +271,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                         int k=0;
                         for(i=0;i<count;i++)
                         {
-                            printf("%s  ",arr[i]);
-                        
+                            color(arr[i]);
+                            printf("  ");
                             k++;
                             if(k%5==0)
                                 putchar('\n');
@@ -271,7 +282,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                         closedir(dir);
                   }
                 else 
-                     printf("%s\n",pathname);
+                     color(pathname);
         
         break;
         
@@ -286,7 +297,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     int k=0;
                     for(i=0;i<count;i++)
                     {
-                        printf("%s ",arr[i]);
+                        color(arr[i]);
                         k++;
                         if(k%5==0)
                             putchar('\n');
@@ -349,7 +360,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 {
                     char thisname[256];
                     strcpy(thisname, head1->name);
-                    printf("%s:\n",thisname);
+                    color(thisname);
+                    printf(":\n");
                     head2=NULL;
                     if ((dir = opendir(thisname)) == NULL) 
                     {
@@ -363,8 +375,6 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     while((ptr=readdir(dir))!=NULL)//创建文件链表
                     {
                         p2=(LINK*)malloc(sizeof(LINK));
-                       // if(ptr->d_name[0]=='.')
-                         //   continue;
                         strcpy(p2->name,ptr->d_name);
                         count++;
                         p2->next=NULL;
@@ -406,7 +416,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                             }
                         }
                                 
-                        printf("%s ",p2->name);
+                        color(p2->name);
+                        printf("  ");
                         k++;
                         if(k%5==0)
                             putchar('\n');
@@ -426,11 +437,14 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 }
             }
             else 
-                printf("%s\n",pathname);
-	}
+                {
+                    color(pathname);
+                    putchar('\n');
+	            }
+    }
     if(flag_param==PARM_L+PARM_R)
     {
-	LINK *p1,*q1,*head1;
+	        LINK *p1,*q1,*head1;
             LINK *p2,*q2,*head2;
             if(S_ISDIR(buf.st_mode))
             {
@@ -441,7 +455,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 {
                     char thisname[256];
                     strcpy(thisname, head1->name);
-                    printf("%s:\n",thisname);
+                    color(thisname);
+                    printf(":\n");
                     head2=NULL;
                     if ((dir = opendir(thisname)) == NULL) 
                     {
@@ -514,9 +529,11 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                    
                 }
             }
-            else 
-                printf("%s\n",pathname);
-
+            else
+            {
+                color(pathname);
+                printf("\n");
+            }
     }
 	if(flag_param==PARM_R+PARM_L+PARM_A)
 	{
@@ -531,7 +548,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 {
                     char thisname[256];
                     strcpy(thisname, head1->name);
-                    printf("%s:\n",thisname);
+                    color(thisname);
+                    printf(":\n");
                     head2=NULL;
                     if ((dir = opendir(thisname)) == NULL) 
                     {
@@ -545,8 +563,6 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     while((ptr=readdir(dir))!=NULL)//创建文件链表
                     {
                         p2=(LINK*)malloc(sizeof(LINK));
-                       // if(ptr->d_name[0]=='.')
-                         //   continue;
                         strcpy(p2->name,ptr->d_name);
                         count++;
                         p2->next=NULL;
@@ -605,7 +621,10 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 }
             }
             else 
-                printf("%s\n",pathname);
+            {
+                color(pathname);
+                printf("\n");
+            }
 	}
 
         if(flag_param==PARM_R)
@@ -621,7 +640,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 {
                     char thisname[256];
                     strcpy(thisname, head1->name);
-                    printf("%s:\n",thisname);
+                    color(thisname);
+                    printf(":\n");
                     head2=NULL;
                     if ((dir = opendir(thisname)) == NULL) 
                     {
@@ -677,8 +697,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                                 q1=p1;
                             }
                         }
-                                
-                        printf("%s ",p2->name);
+                        color(p2->name);
+                        printf("  ");
                         k++;
                         if(k%5==0)
                             putchar('\n');
@@ -698,18 +718,38 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                 }
             }
             else 
-                printf("%s\n",pathname);
-
+            {
+                color(pathname);
+                printf("\n");
+            }
         }
             
         
     default:
         break;
     }
-    
+
 }
 
-/*void display_color(char *name)
+void color(char *name)
 {
+    struct stat bu;
+    if(lstat(name,&bu)==-1)   
+        my_err("lstat",__LINE__);
+    if(S_ISLNK(bu.st_mode))//判断文件是什么类型
+     printf(BLUE "%s"CANCEL,name);//目录
+    else if(S_ISDIR(bu.st_mode))
+        printf(ORANGE "%s" CANCEL,name);//链接
+    else if(S_ISCHR(bu.st_mode))
+    printf(GREEN "%s"CANCEL,name);//字符
+    else if(S_ISBLK(bu.st_mode))
+      printf(PINK "%s"CANCEL,name);//块
+    else if(S_ISFIFO(bu.st_mode))
+    printf(WHITE "%s"CANCEL,name);//FIFO
+    else if(S_ISSOCK(bu.st_mode))
+     printf(BLACK"%s"CANCEL,name);//socket
+    else
+        printf(SKY "%s" CANCEL,name);//文件
+       
     
-}*/
+}
