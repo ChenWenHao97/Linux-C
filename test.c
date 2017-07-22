@@ -4,10 +4,9 @@
 	> Mail: 
 	> Created Time: 2017年07月20日 星期四 09时50分40秒
  ************************************************************************/
-
-#include<stdio.h>
 #include<stdio.h>
 #include<string.h>
+#include<stdlib.h>
 #include<stdlib.h>
 #include<time.h>
 #include<sys/stat.h>
@@ -28,14 +27,18 @@
 int maxfilename=0;
 int  filename=0;
 char arr[256][256];
-
+typedef struct tag{
+    char name[1000];
+    struct tag *next;
+}LINK;
 
 void swap(char *a, char *b);
 int PART(char (*arr)[256],int p,int q);
 void QUICK(char (*arr)[256],int p,int q);//快排!!!
 void my_err(char *err_string,int line);
-void display_attribute(struct stat buf,char *name);
+void display_attribute(struct stat buf,char *name,char*);
 void display(int flag_param,char *pathname);//传二维数组
+void display_color(char *name);
 
 int main(int argc,char *argv[])
 {
@@ -46,7 +49,6 @@ int main(int argc,char *argv[])
     char name[20]={0};
     int count=0;//计数-
     int flag = 1;
-
 
     for(i=1;i<argc;i++)
     {
@@ -76,9 +78,9 @@ int main(int argc,char *argv[])
             flag=0;//没有-的，证明就是有目录
     }
 //判断后面有没有参数
-    if (flag==1)//如果没有’-‘，count=0
+    if (flag==1)//有参数，没目录情况
     {
-        strcpy(name,"./");
+        strcpy(name,".");
         display(flag_param,name);
         return 0;
     }
@@ -141,13 +143,19 @@ void my_err(char *err_string,int line)
     exit(1);
 }
 
-void display_attribute(struct stat buf,char *name)
+void display_attribute(struct stat buf,char *name,char *pathname)
 {
     struct passwd *user;
     struct group *group;
     struct stat bu;
-    if(stat(name,&bu)==-1)
-        my_err("stat",__LINE__);
+
+    char *curdir = getcwd(NULL, 0);
+    //获得现在的工作目录，用于还原，这里getcwd是通过malloc开的空间，所以要记得free.
+    chdir(pathname);//切换工作目录
+    if(lstat(name,&bu)==-1)
+        {
+            my_err("stat",__LINE__);
+        }
     if(S_ISLNK(bu.st_mode))//判断文件是什么类型
         putchar('l');
     else if(S_ISDIR(bu.st_mode))
@@ -218,25 +226,32 @@ void display_attribute(struct stat buf,char *name)
     printf("%  s",time_buf);//文件时间
     if(name[0]!='\0')
         printf(" %s\n",name);
-        
+    
+    chdir(curdir);//还原原本的工作目录
+    free(curdir);//释放掉空间
 }
 
-void display(int flag_param,char *pathname)//传二维数组
+void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
 {
     DIR *dir;
     struct dirent *ptr;
     int count=0;
     struct stat buf;
-    int i,j;
-    j=0;
-    if(stat(pathname,&buf)==-1)///
+    int i,j=0;
+    char alldir[800][1000];
+    char t[200];
+    LINK *p,*q,*head=NULL;
+    char *pwd;
+    int k;
+    
+    if(stat(pathname,&buf)==-1)
+    {
         my_err("lstat",__LINE__);
+    }
 
     switch(flag_param)
     {
         case PARM_NONE:
-                //if(pathname[0]!='.' )//&& pathname[1] != '.')
-                //{
                     if(S_ISDIR(buf.st_mode))
                     
                     { 
@@ -253,6 +268,7 @@ void display(int flag_param,char *pathname)//传二维数组
                         for(i=0;i<count;i++)
                         {
                             printf("%s  ",arr[i]);
+                        
                             k++;
                             if(k%5==0)
                                 putchar('\n');
@@ -299,13 +315,12 @@ void display(int flag_param,char *pathname)//传二维数组
                         for(i=0;i<count;i++)
                         {
                             if(arr[i][0]!='.')
-                            display_attribute(buf,arr[i]);
+                                display_attribute(buf,arr[i],pathname);
                         }
                          closedir(dir);
                     }
                     else
-                        display_attribute(buf,pathname);
-                
+                        display_attribute(buf,".",pathname);
         break;
 
         case PARM_L+PARM_A:
@@ -318,14 +333,116 @@ void display(int flag_param,char *pathname)//传二维数组
                         strcpy(arr[count++],ptr->d_name);
                 QUICK(arr,0,count-1);
                     for(i=0;i<count;i++)
-                        display_attribute(buf,arr[i]);
+                        display_attribute(buf,arr[i],pathname);
                }
                else 
-                    display_attribute(buf,pathname);
+                    display_attribute(buf,".",pathname);
                 closedir(dir);
         break;
+
+    case PARM_R:
+                if(lstat(pathname,&buf)==-1)
+                    my_err("stat",__LINE__);
+                if(S_ISDIR(buf.st_mode))
+                {
+                        count=0;
+                        printf("\n\n%s:\n",pathname);
+                        
+                    if((dir=opendir(pathname))==NULL)
+                        printf("权限不足\n");
+                    while((ptr=readdir(dir))!=NULL)//用链表读取
+                    {
+                        if(ptr->d_name[0]!='.')
+                            {
+                                p=(LINK*)malloc(sizeof(LINK));
+                                pwd=getcwd(NULL,0);
+                                sprintf(p->name,"%s/%s%c",pathname,ptr->d_name,'\0');
+
+                                count++;
+                                p->next=NULL;
+                                if(head==NULL)
+                                    head=p;
+                                else 
+                                    q->next=p;
+                                q=p;
+                            }
+                        if(ptr->d_name[0]!='.')
+                            printf("%s ");
+                    }
+                    closedir(dir);
+                    p=head;
+                    
+                    for(i=1;i<=count;i++)//链表排序
+                    {
+                        p=head;
+                        for(j=1;j<=count-i-1;j++)
+                        {
+                            if(strcmp(p->name,p->next->name)>0)
+                            {
+                                strcpy(t,p->name);
+                                strcpy(p->name,p->next->name);
+                                strcpy(p->next->name,t);
+                            }
+                            p = p->next;
+                        }
+                    }
+
+                p=head;
+                for(i=1;i<=count;i++)//先输出一部分内容
+                    {
+                        printf("%s ",p->name);
+                        if(i%3==0)
+                            putchar('\n');
+                        p=p->next;
+                    }
+                    p=head;
+                k=0;//记录目录个数
+                    for(i=0;i<count;i++)//统计目录中目录个数
+                        {
+                           // char *move;
+                            //char a[256]={0};
+                            //strcpy(a,p->name);
+                            if(stat(p->name,&buf)==-1)
+                                my_err("stat",__LINE__);
+                            
+                            if(S_ISDIR(buf.st_mode))
+                                 {
+                                     strcpy(alldir[k++],p->name);
+                                     // move=(char*)malloc(strlen(p->name));
+                                    //strcpy(move,p->name);
+                                    // strcpy(move,p->name);
+                                     //display(flag_param,move);
+                                     //free(move);
+                                 }
+                            //free(move);
+
+                            p=p->next;
+                        }
+                   if(k>0)//如果存在目录，就递归输出
+                        {
+                            for(i=0;i<k;i++) 
+                            {
+                                    display(flag_param,alldir[i]);
+                            }
+                            k=0;
+                        }
+                    }
+               q=p=head;
+                while(p!=NULL)
+                {
+                    q=p->next;
+                    free(p);
+                    p=q;
+                }
+                break;
         default:
             break;
+        }
+    
+    }
     }
 }
-
+/*void display_color(char *name)
+{
+    
+}*/

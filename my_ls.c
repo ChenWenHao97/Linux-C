@@ -1,9 +1,3 @@
-/*************************************************************************
-	> File Name: my_ls.c
-	> Author: 
-	> Mail: 
-	> Created Time: 2017年07月20日 星期四 09时50分40秒
- ************************************************************************/
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
@@ -240,11 +234,10 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
     int i,j=0;
     char alldir[800][1000];
     char t[200];
-    LINK *p,*q,*head=NULL;
     char *pwd;
     int k;
     
-    if(stat(pathname,&buf)==-1)
+    if(lstat(pathname,&buf)==-1)
     {
         my_err("lstat",__LINE__);
     }
@@ -341,100 +334,107 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
         break;
 
     case PARM_R:
-                if(lstat(pathname,&buf)==-1)
-                    my_err("stat",__LINE__);
-                if(S_ISDIR(buf.st_mode))
+        {
+            LINK *p1,*q1,*head1=NULL;
+            LINK *p2,*q2,*head2=NULL;
+            
+            if(S_ISDIR(buf.st_mode))
+            {
+                q1 = head1 = (LINK*)malloc(sizeof(LINK));
+                strcpy(head1->name, pathname);
+                q1->next=NULL;
+                while (head1 != NULL)
                 {
-                        count=0;
-                        printf("\n\n%s:\n",pathname);
-                        
-                    if((dir=opendir(pathname))==NULL)
-                        printf("权限不足\n");
-                    while((ptr=readdir(dir))!=NULL)//用链表读取
+                    char thisname[256];
+                    strcpy(thisname, head1->name);
+                    printf("%s:\n",thisname);
+                    head2=NULL;
+                    if ((dir = opendir(thisname)) == NULL) 
                     {
-                        if(ptr->d_name[0]!='.')
-                            {
-                                p=(LINK*)malloc(sizeof(LINK));
-                                pwd=getcwd(NULL,0);
-                                sprintf(p->name,"%s/%s%c",pathname,ptr->d_name,'\0');
-
-                                count++;
-                                p->next=NULL;
-                                if(head==NULL)
-                                    head=p;
-                                else 
-                                    q->next=p;
-                                q=p;
-                            }
+                        perror("opendir");
+                        p1 = head1;
+                        head1 = head1->next;
+                        free(p1);
+                        continue;
+                    }
+                    count=0;
+                    while((ptr=readdir(dir))!=NULL)//创建文件链表
+                    {
+                        p2=(LINK*)malloc(sizeof(LINK));
+                        if(ptr->d_name[0]=='.')
+                            continue;
+                        strcpy(p2->name,ptr->d_name);
+                        count++;
+                        p2->next=NULL;
+                        if(head2==NULL)
+                            head2=p2;
+                        else 
+                            q2->next=p2;
+                        q2=p2;
                     }
                     closedir(dir);
-                    p=head;
-                    
-                    for(i=1;i<=count;i++)//链表排序
+                    for(i=1;i<=count;i++)
                     {
-                        p=head;
-                        for(j=1;j<=count-i-1;j++)
+                        p2=head2;
+                        for(j=1;j<=count-i;j++)
                         {
-                            if(strcmp(p->name,p->next->name)>0)
-                            {
-                                strcpy(t,p->name);
-                                strcpy(p->name,p->next->name);
-                                strcpy(p->next->name,t);
-                            }
-                            p = p->next;
+                            if(strcmp(p2->name,p2->next->name)>0)
+                                swap(p2->name,p2->next->name);
+                            p2=p2->next;
                         }
                     }
-
-                p=head;
-                for(i=1;i<=count;i++)//先输出一部分内容
+                    int k=0;
+                    for (p2=head2; p2!=NULL; p2=p2->next)
                     {
-                        printf("%s ",p->name);
-                        if(i%3==0)
-                            putchar('\n');
-                        p=p->next;
-                    }
-                    p=head;
-                k=0;//记录目录个数
-                    for(i=0;i<count;i++)//统计目录中目录个数
+                        char full_dir[256];
+                        sprintf(full_dir,"%s/%s",thisname,p2->name);
+                        if(lstat(full_dir,&buf)==-1) 
                         {
-                            char *move;
-                            if(stat(p->name,&buf)==-1)
-                                my_err("stat",__LINE__);
-                            
+                            perror("\nlstat");
+                        }
+                        else
+                        {
                             if(S_ISDIR(buf.st_mode))
-                                 {
-                                     //strcpy(alldir[k++],p->name);
-                                  move=(char*)malloc(sizeof(int)*1000);
-                                     strcpy(move,p->name);
-                                     display(flag_param,move);
-                                 }
-                            free(move);
-
-                            p=p->next;
-                        }
-                   /* if(k>0)//如果存在目录，就递归输出
-                        {
-                            for(i=0;i<k;i++) 
                             {
-                                    display(flag_param,alldir[i]);
+                                p1=(LINK*)malloc(sizeof(LINK));
+                                strcpy(p1->name,full_dir);
+                                p1->next=NULL;
+                                q1->next=p1;
+                                q1=p1;
                             }
-                            k=0;
                         }
-                    }*/
-               q=p=head;
-                while(p!=NULL)
-                {
-                    q=p->next;
-                    free(p);
-                    p=q;
+                                
+                        printf("%s ",p2->name);
+                        k++;
+                        if(k%5==0)
+                            putchar('\n');
+                    }
+                    putchar('\n');
+                    p2=head2;
+                    while(p2!=NULL)
+                    {
+                        q2=p2->next;
+                        free(p2);
+                        p2=q2;
+                    }
+                    p1 = head1;
+                    head1 = head1->next;
+                    free(p1);
+                   
                 }
-                break;
-        default:
-            break;
+            }
+            else 
+                printf("%s\n",pathname);
+
         }
-    
+            
+        
+    default:
+        break;
     }
+    
 }
+
 /*void display_color(char *name)
 {
     
