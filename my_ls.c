@@ -332,12 +332,286 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     display_attribute(buf,".",pathname);
                 closedir(dir);
         break;
-
+    case PARM_A+PARM_R:
+    case PARM_L+PARM_R:
+    case PARM_L+PARM_R+PARM_A:
     case PARM_R:
+	if(flag_param==PARM_A+PARM_R)
+	{
+            LINK *p1,*q1,*head1;
+            LINK *p2,*q2,*head2;
+		if(S_ISDIR(buf.st_mode))
+            {
+                q1 = head1 = (LINK*)malloc(sizeof(LINK));
+                strcpy(head1->name, pathname);
+                q1->next=NULL;
+                while (head1 != NULL)
+                {
+                    char thisname[256];
+                    strcpy(thisname, head1->name);
+                    printf("%s:\n",thisname);
+                    head2=NULL;
+                    if ((dir = opendir(thisname)) == NULL) 
+                    {
+                        perror("opendir");
+                        p1 = head1;
+                        head1 = head1->next;
+                        free(p1);
+                        continue;
+                    }
+                    count=0;
+                    while((ptr=readdir(dir))!=NULL)//创建文件链表
+                    {
+                        p2=(LINK*)malloc(sizeof(LINK));
+                       // if(ptr->d_name[0]=='.')
+                         //   continue;
+                        strcpy(p2->name,ptr->d_name);
+                        count++;
+                        p2->next=NULL;
+                        if(head2==NULL)
+                            head2=p2;
+                        else 
+                            q2->next=p2;
+                        q2=p2;
+                    }
+                    closedir(dir);
+                    for(i=1;i<=count;i++)
+                    {
+                        p2=head2;
+                        for(j=1;j<=count-i;j++)
+                        {
+                            if(strcmp(p2->name,p2->next->name)>0)
+                                swap(p2->name,p2->next->name);
+                            p2=p2->next;
+                        }
+                    }
+                    int k=0;
+                    for (p2=head2; p2!=NULL; p2=p2->next)
+                    {
+                        char full_dir[256];
+                        sprintf(full_dir,"%s/%s",thisname,p2->name);
+                        if(lstat(full_dir,&buf)==-1) 
+                        {
+                            perror("\nlstat");
+                        }
+                        else
+                        {
+                            if(S_ISDIR(buf.st_mode))
+                            {
+                                p1=(LINK*)malloc(sizeof(LINK));
+                                strcpy(p1->name,full_dir);
+                                p1->next=NULL;
+                                q1->next=p1;
+                                q1=p1;
+                            }
+                        }
+                                
+                        printf("%s ",p2->name);
+                        k++;
+                        if(k%5==0)
+                            putchar('\n');
+                    }
+                    putchar('\n');
+                    p2=head2;
+                    while(p2!=NULL)
+                    {
+                        q2=p2->next;
+                        free(p2);
+                        p2=q2;
+                    }
+                    p1 = head1;
+                    head1 = head1->next;
+                    free(p1);
+                   
+                }
+            }
+            else 
+                printf("%s\n",pathname);
+	}
+    if(flag_param==PARM_L+PARM_R)
+    {
+	LINK *p1,*q1,*head1;
+            LINK *p2,*q2,*head2;
+            if(S_ISDIR(buf.st_mode))
+            {
+                q1 = head1 = (LINK*)malloc(sizeof(LINK));
+                strcpy(head1->name, pathname);
+                q1->next=NULL;
+                while (head1 != NULL)
+                {
+                    char thisname[256];
+                    strcpy(thisname, head1->name);
+                    printf("%s:\n",thisname);
+                    head2=NULL;
+                    if ((dir = opendir(thisname)) == NULL) 
+                    {
+                        perror("opendir");
+                        p1 = head1;
+                        head1 = head1->next;
+                        free(p1);
+                        continue;
+                    }
+                    count=0;
+                    while((ptr=readdir(dir))!=NULL)//创建文件链表
+                    {
+                        p2=(LINK*)malloc(sizeof(LINK));
+                        if(ptr->d_name[0]=='.')
+                            continue;
+                        strcpy(p2->name,ptr->d_name);
+                        count++;
+                        p2->next=NULL;
+                        if(head2==NULL)
+                            head2=p2;
+                        else 
+                            q2->next=p2;
+                        q2=p2;
+                    }
+                    closedir(dir);
+                    for(i=1;i<=count;i++)
+                    {
+                        p2=head2;
+                        for(j=1;j<=count-i;j++)
+                        {
+                            if(strcmp(p2->name,p2->next->name)>0)
+                                swap(p2->name,p2->next->name);
+                            p2=p2->next;
+                        }
+                    }
+                    int k=0;
+                    for (p2=head2; p2!=NULL; p2=p2->next)
+                    {
+                        char full_dir[256];
+                        sprintf(full_dir,"%s/%s",thisname,p2->name);
+                        if(lstat(full_dir,&buf)==-1) 
+                        {
+                            perror("\nlstat");
+                        }
+                        else
+                        {
+                            if(S_ISDIR(buf.st_mode))
+                            {
+                                p1=(LINK*)malloc(sizeof(LINK));
+                                strcpy(p1->name,full_dir);
+                                p1->next=NULL;
+                                q1->next=p1;
+                                q1=p1;
+                            }
+                        }
+                                
+			        display_attribute(buf,p2->name,thisname);
+                    }
+                    putchar('\n');
+                    p2=head2;
+                    while(p2!=NULL)
+                    {
+                        q2=p2->next;
+                        free(p2);
+                        p2=q2;
+                    }
+                    p1 = head1;
+                    head1 = head1->next;
+                    free(p1);
+                   
+                }
+            }
+            else 
+                printf("%s\n",pathname);
+
+    }
+	if(flag_param==PARM_R+PARM_L+PARM_A)
+	{
+		LINK *p1,*q1,*head1;
+            LINK *p2,*q2,*head2;
+            if(S_ISDIR(buf.st_mode))
+            {
+                q1 = head1 = (LINK*)malloc(sizeof(LINK));
+                strcpy(head1->name, pathname);
+                q1->next=NULL;
+                while (head1 != NULL)
+                {
+                    char thisname[256];
+                    strcpy(thisname, head1->name);
+                    printf("%s:\n",thisname);
+                    head2=NULL;
+                    if ((dir = opendir(thisname)) == NULL) 
+                    {
+                        perror("opendir");
+                        p1 = head1;
+                        head1 = head1->next;
+                        free(p1);
+                        continue;
+                    }
+                    count=0;
+                    while((ptr=readdir(dir))!=NULL)//创建文件链表
+                    {
+                        p2=(LINK*)malloc(sizeof(LINK));
+                       // if(ptr->d_name[0]=='.')
+                         //   continue;
+                        strcpy(p2->name,ptr->d_name);
+                        count++;
+                        p2->next=NULL;
+                        if(head2==NULL)
+                            head2=p2;
+                        else 
+                            q2->next=p2;
+                        q2=p2;
+                    }
+                    closedir(dir);
+                    for(i=1;i<=count;i++)
+                    {
+                        p2=head2;
+                        for(j=1;j<=count-i;j++)
+                        {
+                            if(strcmp(p2->name,p2->next->name)>0)
+                                swap(p2->name,p2->next->name);
+                            p2=p2->next;
+                        }
+                    }
+                    int k=0;
+                    for (p2=head2; p2!=NULL; p2=p2->next)//存放目录文件
+                    {
+                        char full_dir[256];
+                        sprintf(full_dir,"%s/%s",thisname,p2->name);
+                        if(lstat(full_dir,&buf)==-1) 
+                        {
+                            perror("\nlstat");
+                        }
+                        else
+                        {
+                            if(S_ISDIR(buf.st_mode)&&strcmp(p2->name,".")!=0&&strcmp(p2->name,"..")!=0)
+                            {
+                                p1=(LINK*)malloc(sizeof(LINK));
+                                strcpy(p1->name,full_dir);
+                                p1->next=NULL;
+                                q1->next=p1;
+                                q1=p1;
+                            }
+                        }
+                                
+			        display_attribute(buf,p2->name,thisname);
+                    }
+                    putchar('\n');
+                    p2=head2;
+                    while(p2!=NULL)
+                    {
+                        q2=p2->next;
+                        free(p2);
+                        p2=q2;
+                    }
+                    p1 = head1;
+                    head1 = head1->next;
+                    free(p1);
+                   
+                }
+            }
+            else 
+                printf("%s\n",pathname);
+	}
+
+        if(flag_param==PARM_R)
         {
-            LINK *p1,*q1,*head1=NULL;
-            LINK *p2,*q2,*head2=NULL;
-            
+            LINK *p1,*q1,*head1;
+            LINK *p2,*q2,*head2;
             if(S_ISDIR(buf.st_mode))
             {
                 q1 = head1 = (LINK*)malloc(sizeof(LINK));
