@@ -151,13 +151,13 @@ void display_attribute(struct stat buf,char *name,char *pathname)
     struct group *group;
     struct stat bu;
 
-    char *curdir = getcwd(NULL, 0);
-    //获得现在的工作目录，用于还原，这里getcwd是通过malloc开的空间，所以要记得free.
-    chdir(pathname);//切换工作目录
-    if(lstat(name,&bu)==-1)
+    char str[256];
+    sprintf(str,"%s/%s",pathname,name);//构建绝对路径
+    if(lstat(str,&bu)==-1)
         {
             my_err("stat",__LINE__);
         }
+
     if(S_ISLNK(bu.st_mode))//判断文件是什么类型
         putchar('l');
     else if(S_ISDIR(bu.st_mode))
@@ -228,12 +228,10 @@ void display_attribute(struct stat buf,char *name,char *pathname)
     printf("%  s  ",time_buf);//文件时间
     if(name[0]!='\0')
         {
-            color(pathname,curdir);
+            color(name,pathname);
             putchar('\n');
         }
     
-    chdir(curdir);//还原原本的工作目录
-    free(curdir);//释放掉空间
 }
 
 void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
@@ -300,10 +298,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     int k=0;
                     for(i=0;i<count;i++)
                     {
-                        char tbuf[500];
-                        //sprintf(tbuf,"%s/%s",pathname,arr[i]);
                         color(arr[i],pathname);//arr[i]);
-                        //printf("%s",arr[i]);
                         printf("  ");
                         k++;
                         if(k%5==0)
@@ -543,7 +538,6 @@ break;
             }
             else
             {
-                //color(pathname);
                 printf(BLUE "%s"CANCEL,pathname);//目录
                 printf("\n");
             }
@@ -563,7 +557,6 @@ break;
                 {
                     char thisname[256];
                     strcpy(thisname, head1->name);
-                    //color(thisname);
                     printf(BLUE "%s"CANCEL,thisname);//目录
                     printf(":\n");
                     head2=NULL;
@@ -638,7 +631,6 @@ break;
             }
             else 
             {
-                //color(pathname);
                 printf(BLUE "%s"CANCEL,pathname);//目录
                 printf("\n");
             }
@@ -658,7 +650,6 @@ break;
                 {
                     char thisname[256];
                     strcpy(thisname, head1->name);
-                    //color(thisname);
                      printf(BLUE "%s"CANCEL,thisname);//目录
                     printf(":\n");
                     head2=NULL;
@@ -716,7 +707,6 @@ break;
                                 q1=p1;
                             }
                         }
-                        //color(p2->name);
                         color(p2->name,thisname);
 
                         printf("  ");
@@ -739,7 +729,6 @@ break;
             }
             else 
             {
-               // color(pathname);
                  printf(BLUE "%s"CANCEL,pathname);//目录
                 printf("\n");
             }
@@ -755,10 +744,17 @@ void color(char *name,char *pathname )//颜色函数
 {
     struct stat bu;
     char buf[256];
-    sprintf(buf,"%s/%s",pathname,name);
+    int flag=0;
+    if(pathname[strlen(pathname)-2]!='/'&&name[0]!='/')
+        sprintf(buf,"%s/%s",pathname,name);
+    else if(pathname[strlen(pathname)-2]!='/'&&name[0]=='/')
+        sprintf(buf,"%s%s",pathname,name);
+    else 
+        sprintf(buf,"%s%s",pathname,name);
     if(lstat(buf,&bu)==-1)
     {
-        printf("打不开！\n");
+        flag=1;
+        //printf(",权限不足！\n");
     }
     if(S_ISLNK(bu.st_mode))//判断文件是什么类型
      printf(BLUE "%s"CANCEL,name);//目录
@@ -774,5 +770,7 @@ void color(char *name,char *pathname )//颜色函数
      printf(BLACK"%s"CANCEL,name);//socket
     else
         printf(SKY "%s" CANCEL,name);//文件
+    if(flag)
+        printf("权限不足！\n");
        
 }
