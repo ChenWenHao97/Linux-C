@@ -1,156 +1,361 @@
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
-#include<sys/types.h>
 #include<unistd.h>
+#include<sys/types.h>
 #include<sys/wait.h>
 #include<fcntl.h>
+#include<sys/stat.h>
 #include<dirent.h>
-#include<readline/readline.h>
-#include<readline/history.h>
 
-#define RUNBACK 32
-#define PIPE 1
-#define IN 2
-#define OUT 4
-#define INAPP 8
-#define OUTAPP 16
+#define normal 0
+#define out_redirect 1
+#define in_redirect 2
+#define have_pipe 3
 
-void print();
-int get_param(char *,char (*str)[256]);
-void explain_param(char (*str)[256],int *param,int k);
-int main()
+void print_prompt();
+void get_input(char *);
+void explain_input(char *,int *,char a[][256]);
+void do_cmd(int ,char a[  ][256]);
+int  find_command(char *);
+
+int main(int argc,char *argv[])
 {
-    char *buf;
-    char str[100][256]={0};
-    int pid;
-    int param=0;
-    int k;//二维数组的一维大小
+    int i;
+    int argcount=0;
+    char arglist[100][256];
+    char **arg=NULL;
+    char *buf=NULL;
+
+    buf=(char*)malloc(256);
+    if(buf==NULL)
+    {
+        perror("malloc failed");
+        exit(-1);
+    }
     while(1)
     {
-        buf=readline("cwh$:");
-        if(strcmp(buf,"exit")==0)
+        memset(buf,0,256);
+        print_prompt();
+        get_input(buf);
+        if(strcmp(buf,"exit\n")==0||strcmp(buf,"logout\n")==0)
             break;
-        add_history(buf);//记录历史记录
-        k=get_param(buf,str);
-        explain_param(str,&param,k);
+        for(i=0;i<100;i++)
+            arglist[i][0]='\0';
+        argcount=0;
+        explain_input(buf,&argcount,arglist);
+        do_cmd(argcount,arglist);
+    }
+    if(buf!=NULL)
+    {
+        free(buf);
+        buf=NULL;
     }
     exit(0);
 }
-
-int get_param(char *buf,char (*str)[256])
+void print_prompt()
 {
-    int i;
-    int j=0,k=0,q=0;
-    int start=0,end=0;
-    int flag=0;
-    strcat(buf, " ");
-    for(i=0;i<strlen(buf);i++)
+    printf("myshell$$");
+}
+void get_input(char *buf)
+{
+    int len=0;
+    int ch;
+
+    ch=getchar();
+    while(len<256&&ch!='\n')
     {
-        flag=0;
-        if(buf[i]==' ')
-        {
-            q=0;
-            start=i-1;
-            for(j=end;j<=start;j++)
-            {
-                flag=1;
-                str[k][q++]=buf[j];
-            }
-            for(j=start+1;j<strlen(buf);j++)
-            {
-                if(buf[j]!=' ')
-                {
-                    end=j;
-                    break;
-                }
-            }
-        }
-        if(flag)
-        {
-            str[k][q]='\0';
-            k++;
-        }
+        buf[len++]=ch;
+        ch=getchar();
     }
-    return k;
+    if(len==256)
+    {
+        printf("command is too long");
+        exit(-1);
+    }
+    buf[len]='\n';
+    len++;
+    buf[len]='\0';
 }
 
-void explain_param(char (*str)[256],int *param,int k)
+void explain_input(char *buf,int *argcount,char arglist[100][256])
 {
-    int i;
-    char store[100][256];//存ls参数
-    char rest[256];
-    int back=0;
-    int len=k;
-    int flag=0;
-    int m=0;
-    char file1[256],file2[256];
-    for(i=0;i<len;i++)
-    {
+    char *p=buf;
+    char *q=buf;
+    int number=0;
 
-        if(strcmp(str[i],">")==0)//一定要++i，不然就会重复读取
-        {
-            (*param)|=OUT;
-            strcpy(rest,str[++i]);
-            continue;
-        }
-        if(strcmp(str[i],">>")==0)
-        {
-            (*param)|=OUTAPP;
-            strcpy(rest,str[++i]);
-            continue;
-        }
-        if(strcmp(str[i],"<")==0)
-        {
-            (*param)|=IN;
-            strcpy(rest,str[++i]);
-            continue;
-        }
-        if(strcmp(str[i],"<<")==0)
-        {
-            (*param)|=INAPP;
-            strcpy(rest,str[i+1]);
-            continue;
-        }
-        if(strcmp(str[i],"|")==0)
-        {
-            (*param)|=PIPE;
-            strcpy(file1,str[i-1]);
-            strcpy(file2,str[i+1]);
+    while(1)
+    {
+        if(p[0]=='\n')
             break;
-        }
-        if(strcmp(str[i],"&")==0)
+        if(p[0]==' ')
+            p++;
+        else
         {
-            back=1;
-            continue;
+            q=p;
+            number=0;
+            while(q[0]!=' '&&(q[0]!='\n'))
+            {
+                number++;
+                q++;
+            }
+            strncpy(arglist[*argcount],p,number+1);
+            arglist[*argcount][number]='\0';
+            *argcount=*argcount+1;
+            p=q;
         }
-        strcpy(store[m++],str[i]);
     }
+}
 
-    char *argv[256];
-    for(i=0;i<m;i++)
-    {
-        argv[i]=store[i];//指针数组就可以存char *NULL
-    }
-    argv[i]=(char*)NULL;
+void do_cmd(int argcount,char arglist[100][256])
+{
+    int flag=0;
+    int how=0;
+    int backgroud=0;//find &
+    int status;
+    int i;
+    int fd;
+    char *arg[argcount+1];
+    char * argnext[argcount+1];
+    char *file;
     pid_t pid;
-    pid=fork();
-    switch(pid)
+
+    for(i=0;i<argcount;i++)
+        arg[i]=(char *)arglist[i];
+
+    arg[argcount]=NULL;
+
+    for(i=0;i<argcount;i++)
+    {
+        if(strncmp(arg[i],"&",1)==0)
+        {
+            if(i==argcount-1)
+            {
+                backgroud=1;
+                arg[argcount-1]=NULL;
+                break;
+            }
+            else
+            {
+                printf("wrong num\n");
+                return ;
+            }
+        }
+    }
+    for(i=0;arg[i]!=NULL;i++)
+    {
+        if(strcmp(arg[i],">")==0)
+        {
+            flag++;
+            how=out_redirect;
+            if(arg[i++]==NULL)
+                flag++;
+        }
+        if(strcmp(arg[i],"<")==0)
+        {
+            flag++;
+            how=in_redirect;
+            if(i==0)
+                flag++;
+        }
+        if(strcmp(arg[i],"|")==0)
+        {
+            flag++;
+            how=in_redirect;
+            if(i==0)
+                flag++;
+        }
+        if(strcmp(arg[i],"|")==0)
+        {
+            flag++;
+            how=have_pipe;
+            if(arg[i+1]==NULL)
+                flag++;
+            if(i==0)
+                flag++;
+        }
+
+    }
+    if(flag>1)
+    {
+        printf("wrong command!\n");
+        return ;
+    }
+    if(how==out_redirect)
+    {
+        for(i=0;arg[i]!=NULL;i++)
+        {
+            if(strcmp(arg[i],">")==0)
+            {
+                file=arg[i+1];
+                arg[i]=NULL;
+            }
+        }
+    }
+    if(how=in_redirect)
+    {
+        for(i=0;arg[i]!=NULL;i++)
+        {
+            if(strcmp(arg[i],">")==0)
+            {
+                file=arg[i+1];
+                arg[i]=NULL;
+            }
+        }
+    }
+    if(how=in_redirect)
+    {
+        for(i=0;arg[i]!=NULL;i++)
+        {
+            if(strcmp(arg[i],"<")==0)
+            {
+                file=arg[i+1];
+                arg[i]=NULL;
+            }
+        }
+    }
+    if(how=have_pipe)
+    {
+        for(i=0;arg[i]!=NULL;i++)
+        {
+            if(strcmp(arg[i],"|")==0)
+            {
+                arg[i]=NULL;
+                int j;
+                for(j=i+1;arg[j]!=NULL;j++)
+                    argnext[j-i-1]=arg[j];
+                argnext[j-i-1]=arg[j];
+                break;
+            }
+        }
+
+
+    }
+    if((pid=fork())<0)
+    {
+        printf("fork error\n");
+        return ;
+    }
+    switch(how)
     {
         case 0:
+            if(pid=0)
+        {
+            if(!(find_command(arg[0])))
             {
-                int err = execvp(store[0], argv);
-                if (err != 0)
-                    perror("cwh");
+                printf("%s : command not found\n",arg[0]);
                 exit(0);
             }
-            break;
-        case -1:
-            printf("creat process failed!");
-            return;
-        default:
-            waitpid(pid,NULL,0);
-            break;
-    }
+            execvp(arg[0],arg);
+            exit(0);
+        }
+        break;
+        case 1:
+            if(pid==0)
+        {
+            if(!find_command(arg[0]))
+            {
+                printf("%s :command not found\n",arg[0]);
+                exit(0);
+            }
+            fd=open(file,O_RDWR|O_CREAT|O_TRUNC,0644);
+            dup2(fd,1);
+            execvp(arg[0],arg);
+            exit(0);
+        }
+        break;
 
+        case 2:
+            if(pid==0)
+        {
+            if(!find_command(arg[0]))
+            {
+                printf("%s :command not found\n",arg[0]);
+                exit(0);
+            }
+            fd=open(file,O_RDONLY);
+            dup2(fd,0);
+            execvp(arg[0],arg);
+            exit(0);
+        }
+        break;
+
+        case 3:
+            if(pid==0)
+        {
+            int pid2;
+            int status2;
+            int fd2;
+
+            if((pid=fork())<0)
+            {
+                printf("fork2 error\n");
+                return;
+            }
+            else if(pid==0)
+            {
+                if(!(find_command(arg[0])))
+                {
+                    printf("%s :command not found\n",arg[0]);
+                    exit(0);
+                }
+                fd2=open("testforfun",O_WRONLY|O_CREAT|O_TRUNC,0644);
+                dup2(fd2,1);
+                execvp(arg[0],arg);
+                exit(0);
+            }
+        if(waitpid(pid2,&status2,0)==-1)
+            printf("wait for child process error\n");
+        if(!(find_command(argnext[0])))
+        {
+            printf("%s :command not found\n",argnext[0]);
+            exit(0);
+        }
+        fd2=open("testforfun",O_RDONLY);
+        dup2(fd2,0);
+        execvp(argnext[0],argnext);
+        if(remove("testforfun"))
+            printf("remove error\n");
+        exit(0);
+    break;
+    default:
+        break;
+    }
+    if(backgroud==1)
+    {
+        printf("[process id %d]\n",pid);
+        return ;
+    }
+    if(waitpid(pid,&status,0)==-1)
+        printf("wait for child process error\n");
+
+}
+}
+
+int find_command(char *command)
+{
+    DIR *dp;
+    struct dirent* dirp;
+    char *path[]={"./","/bin","usr/bin",NULL};
+
+    if(strncmp(command,"./",2)==0)
+        command=command+2;
+
+    int i=0;
+    while(path[i]!=NULL)
+    {
+        if((dp=opendir(path[i]))==NULL)
+            printf("can not open /bin \n");
+        while((dirp=readdir(dp))!=NULL)
+        {
+            if(strcmp(dirp->d_name,command)==0)
+            {
+                closedir(dp);
+                return 1;
+            }
+        }
+        closedir(dp);
+        i++;
+    }
+    return 0;
 }
