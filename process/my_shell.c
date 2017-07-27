@@ -28,6 +28,7 @@ int main()
     int k;//二维数组的一维大小
     while(1)
     {
+        param=0;
         buf=readline("cwh$:");
         if(strcmp(buf,"exit")==0)
             break;
@@ -144,6 +145,8 @@ void explain_param(char (*str)[256],int *param,int k)
             fd=open(rest,O_RDWR|O_CREAT|O_TRUNC,0644), is_redirect=1;
         else if((*param)&OUTAPP)
             fd=open(rest,O_RDWR|O_CREAT|O_APPEND,0644),is_redirect=1;
+        else if((*param)&IN)
+            fd=open(rest,O_RDONLY),is_redirect=2;
         if(is_redirect && fd<0)
         {
             perror("open");
@@ -151,6 +154,9 @@ void explain_param(char (*str)[256],int *param,int k)
         }
         if(is_redirect==1)
             dup2(fd, STDOUT_FILENO);
+        if(is_redirect==2)
+            dup2(fd,STDIN_FILENO);
+
         int err=execvp(store[0], argv);
         if (err!=0)
             perror("erro:");
