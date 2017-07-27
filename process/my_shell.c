@@ -135,22 +135,35 @@ void explain_param(char (*str)[256],int *param,int k)
     argv[i]=(char*)NULL;
     pid_t pid;
     pid=fork();
-    switch(pid)
-    {
-        case 0:
-            {
-                int err = execvp(store[0], argv);
-                if (err != 0)
-                    perror("cwh");
-                exit(0);
-            }
-            break;
-        case -1:
-            printf("creat process failed!");
-            return;
-        default:
-            waitpid(pid,NULL,0);
-            break;
-    }
 
+    if(pid==0)
+    {
+        int is_redirect=0;
+        int fd;
+        if((*param)&OUT)
+            fd=open(rest,O_RDWR|O_CREAT|O_TRUNC,0644), is_redirect=1;
+        else if((*param)&OUTAPP)
+            fd=open(rest,O_RDWR|O_CREAT|O_APPEND,0644),is_redirect=1;
+        if(is_redirect && fd<0)
+        {
+            perror("open");
+            exit(-1);
+        }
+        if(is_redirect==1)
+            dup2(fd, STDOUT_FILENO);
+        int err=execvp(store[0], argv);
+        if (err!=0)
+            perror("erro:");
+        exit(0);
+    }
+    if(pid == -1)
+    {
+        printf("creat process failed!");
+        return;
+    }
+    if(pid > 0)
+    {
+        waitpid(pid,NULL,0);
+        return;
+    }
 }

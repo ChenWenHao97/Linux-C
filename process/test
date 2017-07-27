@@ -1,0 +1,19 @@
+总用量 84
+-rwxrwxr-x 1 cwh cwh 13480 7月  27 16:53 a.out
+-rw-r--r-- 1 cwh cwh  1149 7月  24 17:39 daemon.c
+-rw-r--r-- 1 cwh cwh  1139 7月  24 17:38 diffork.c
+-rw-r--r-- 1 cwh cwh   574 7月  25 09:28 env.c
+-rw-rw-r-- 1 cwh cwh   770 7月  27 12:16 ex2.c
+-rw-r--r-- 1 cwh cwh  1042 7月  25 10:20 exec.c
+-rw-rw-r-- 1 cwh cwh   236 7月  27 12:16 exp.c
+-rw-r--r-- 1 cwh cwh   832 7月  24 11:24 fork2.c
+-rw-r--r-- 1 cwh cwh   762 7月  24 11:40 fork3.c
+-rw-r--r-- 1 cwh cwh   803 7月  24 11:19 fork.c
+-rw-r--r-- 1 cwh cwh   568 7月  25 11:58 getpid.c
+-rwxrwxr-x 1 cwh cwh    39 7月  27 16:53 make
+-rw-rw-r-- 1 cwh cwh  3574 7月  27 16:51 my_shell.c
+-rw-r--r-- 1 cwh cwh   618 7月  25 10:21 processimage.c
+-rw-r--r-- 1 cwh cwh  7383 7月  27 16:26 shell.c
+-rw-r--r-- 1 cwh cwh   748 7月  25 19:21 studyuid.c
+-rw-r--r-- 1 cwh cwh     0 7月  27 16:53 test
+-rw-r--r-- 1 cwh cwh  1236 7月  25 10:54 wait.c
