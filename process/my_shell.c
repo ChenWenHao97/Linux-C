@@ -152,8 +152,13 @@ void explain_param(char (*str)[256],int *param,int k)
         return;
     }
     pid_t pid;
-    if(flag==0)
+    if(flag==0||back)
         pid=fork();
+    if(back&&pid>0)//有了&而且父进程要结束
+    {
+        printf("process id %d\n",pid);
+        return ;
+    }
 
         if(flag)//如果有cd的情况
         {
