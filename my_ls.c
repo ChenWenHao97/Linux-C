@@ -100,7 +100,7 @@ int main(int argc,char *argv[])
             my_err("lstat",__LINE__);
         display(flag_param,name);
         i++;
-            
+
     }
     return 0;
 }
@@ -176,7 +176,7 @@ void display_attribute(struct stat buf,char *name,char *pathname)
     //判断user权限
     if(bu.st_mode & S_IREAD)
         putchar('r');
-    else 
+    else
         putchar('-');
     if(bu.st_mode & S_IWRITE)
         putchar('w');
@@ -184,7 +184,7 @@ void display_attribute(struct stat buf,char *name,char *pathname)
         putchar('-');
     if(bu.st_mode & S_IEXEC)
         putchar('x');
-    else 
+    else
         putchar('-');
 
     //判断group权限
@@ -198,7 +198,7 @@ void display_attribute(struct stat buf,char *name,char *pathname)
         putchar('-');
      if(bu.st_mode & S_IXGRP)
         putchar('x');
-    else 
+    else
         putchar('-');
 
     //判断others权限
@@ -218,7 +218,7 @@ void display_attribute(struct stat buf,char *name,char *pathname)
     user=getpwuid(bu.st_uid);//获取userID
     group=getgrgid(bu.st_gid);//获取groupID
 
-    printf("  %-4d",bu.st_nlink);//链接数
+    printf("%-4d",bu.st_nlink);//链接数
     printf("%-5s",user->pw_name);//user;
     printf("%-5s",group->gr_name);//group;
     printf("%-8d",bu.st_size);//文件大小
@@ -231,7 +231,7 @@ void display_attribute(struct stat buf,char *name,char *pathname)
             color(name,pathname);
             putchar('\n');
         }
-    
+
 }
 
 void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
@@ -245,7 +245,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
     char t[200];
     char *pwd;
     int k;
-    
+
     if(lstat(pathname,&buf)==-1)
     {
         my_err("lstat",__LINE__);
@@ -256,8 +256,8 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
         case PARM_NONE:
         {
                     if(S_ISDIR(buf.st_mode))
-                    
-                    { 
+
+                    {
                         count=0;
                         if((dir=opendir(pathname))==NULL)
                             my_err("opendir",__LINE__);
@@ -280,13 +280,13 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                             putchar('\n');
                         closedir(dir);
                   }
-                else 
+                else
                      //color(pathname);
                     printf(SKY "%s" CANCEL,pathname);//文件
         }
         break;
-        
-        case PARM_A: 
+
+        case PARM_A:
         {
                 count=0;
                 if((dir=opendir(pathname))==NULL)
@@ -333,7 +333,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
         break;
 
     case PARM_L+PARM_A:
-    { 
+    {
 		        count=0;
                if(S_ISDIR(buf.st_mode))
                {
@@ -345,7 +345,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     for(i=0;i<count;i++)
                         display_attribute(buf,arr[i],pathname);
                }
-               else 
+               else
                     display_attribute(buf,".",pathname);
                 closedir(dir);
 	}
@@ -367,7 +367,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                    // color(thisname);
                     printf(":\n");
                     head2=NULL;
-                    if ((dir = opendir(thisname)) == NULL) 
+                    if ((dir = opendir(thisname)) == NULL)
                     {
                         perror("opendir");
                         p1 = head1;
@@ -384,7 +384,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                         p2->next=NULL;
                         if(head2==NULL)
                             head2=p2;
-                        else 
+                        else
                             q2->next=p2;
                         q2=p2;
                     }
@@ -404,7 +404,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     {
                         char full_dir[256];
                         sprintf(full_dir,"%s/%s",thisname,p2->name);
-                        if(lstat(full_dir,&buf)==-1) 
+                        if(lstat(full_dir,&buf)==-1)
                         {
                             perror("\nlstat");
                         }
@@ -419,7 +419,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                                 q1=p1;
                             }
                         }
-                                
+
                         color(p2->name,thisname);
                         printf("  ");
                         k++;
@@ -437,10 +437,10 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
                     p1 = head1;
                     head1 = head1->next;
                     free(p1);
-                   
+
                 }
             }
-            else 
+            else
                 {
                     //color(pathname);
                     printf(SKY "%s" CANCEL,pathname);//文件
@@ -449,7 +449,7 @@ void display(int flag_param,char *pathname)//传二维数组,pahtname全路径
     }
 break;
     case PARM_L+PARM_R:
-    { 
+    {
 	        LINK *p1,*q1,*head1;
             LINK *p2,*q2,*head2;
             if(S_ISDIR(buf.st_mode))
@@ -465,7 +465,7 @@ break;
                      printf(BLUE "%s"CANCEL,thisname);//目录
                     printf(":\n");
                     head2=NULL;
-                    if ((dir = opendir(thisname)) == NULL) 
+                    if ((dir = opendir(thisname)) == NULL)
                     {
                         perror("opendir");
                         p1 = head1;
@@ -484,7 +484,7 @@ break;
                         p2->next=NULL;
                         if(head2==NULL)
                             head2=p2;
-                        else 
+                        else
                             q2->next=p2;
                         q2=p2;
                     }
@@ -504,7 +504,7 @@ break;
                     {
                         char full_dir[256];
                         sprintf(full_dir,"%s/%s",thisname,p2->name);
-                        if(lstat(full_dir,&buf)==-1) 
+                        if(lstat(full_dir,&buf)==-1)
                         {
                             perror("\nlstat");
                         }
@@ -519,7 +519,7 @@ break;
                                 q1=p1;
                             }
                         }
-                                
+
 			        display_attribute(buf,p2->name,thisname);
                     }
                     putchar('\n');
@@ -533,7 +533,7 @@ break;
                     p1 = head1;
                     head1 = head1->next;
                     free(p1);
-                   
+
                 }
             }
             else
@@ -560,7 +560,7 @@ break;
                     printf(BLUE "%s"CANCEL,thisname);//目录
                     printf(":\n");
                     head2=NULL;
-                    if ((dir = opendir(thisname)) == NULL) 
+                    if ((dir = opendir(thisname)) == NULL)
                     {
                         perror("opendir");
                         p1 = head1;
@@ -577,7 +577,7 @@ break;
                         p2->next=NULL;
                         if(head2==NULL)
                             head2=p2;
-                        else 
+                        else
                             q2->next=p2;
                         q2=p2;
                     }
@@ -597,7 +597,7 @@ break;
                     {
                         char full_dir[256];
                         sprintf(full_dir,"%s/%s",thisname,p2->name);
-                        if(lstat(full_dir,&buf)==-1) 
+                        if(lstat(full_dir,&buf)==-1)
                         {
                             perror("\nlstat");
                         }
@@ -612,7 +612,7 @@ break;
                                 q1=p1;
                             }
                         }
-                                
+
 			        display_attribute(buf,p2->name,thisname);
                     }
                     putchar('\n');
@@ -626,10 +626,10 @@ break;
                     p1 = head1;
                     head1 = head1->next;
                     free(p1);
-                   
+
                 }
             }
-            else 
+            else
             {
                 printf(BLUE "%s"CANCEL,pathname);//目录
                 printf("\n");
@@ -653,7 +653,7 @@ break;
                      printf(BLUE "%s"CANCEL,thisname);//目录
                     printf(":\n");
                     head2=NULL;
-                    if ((dir = opendir(thisname)) == NULL) 
+                    if ((dir = opendir(thisname)) == NULL)
                     {
                         perror("opendir");
                         p1 = head1;
@@ -672,7 +672,7 @@ break;
                         p2->next=NULL;
                         if(head2==NULL)
                             head2=p2;
-                        else 
+                        else
                             q2->next=p2;
                         q2=p2;
                     }
@@ -692,7 +692,7 @@ break;
                     {
                         char full_dir[256];
                         sprintf(full_dir,"%s/%s",thisname,p2->name);
-                        if(lstat(full_dir,&buf)==-1) 
+                        if(lstat(full_dir,&buf)==-1)
                         {
                             perror("\nlstat");
                         }
@@ -727,14 +727,14 @@ break;
                     free(p1);
                 }
             }
-            else 
+            else
             {
                  printf(BLUE "%s"CANCEL,pathname);//目录
                 printf("\n");
             }
-        
+
     }
- 	break;       
+ 	break;
     default:
         break;
     }
@@ -749,7 +749,7 @@ void color(char *name,char *pathname )//颜色函数
         sprintf(buf,"%s/%s",pathname,name);
     else if(pathname[strlen(pathname)-2]!='/'&&name[0]=='/')
         sprintf(buf,"%s%s",pathname,name);
-    else 
+    else
         sprintf(buf,"%s%s",pathname,name);
     if(lstat(buf,&bu)==-1)
     {
@@ -772,5 +772,5 @@ void color(char *name,char *pathname )//颜色函数
         printf(SKY "%s" CANCEL,name);//文件
     if(flag)
         printf("权限不足！\n");
-       
+
 }

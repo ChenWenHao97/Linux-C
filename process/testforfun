@@ -1,0 +1,16 @@
+./:
+总用量 68
+-rwxr-xr-x 1 cwh cwh 13896 7月  26 11:33 a.out
+-rw-r--r-- 1 cwh cwh  1149 7月  24 17:39 daemon.c
+-rw-r--r-- 1 cwh cwh  1139 7月  24 17:38 diffork.c
+-rw-r--r-- 1 cwh cwh   574 7月  25 09:28 env.c
+-rw-r--r-- 1 cwh cwh  1042 7月  25 10:20 exec.c
+-rw-r--r-- 1 cwh cwh   832 7月  24 11:24 fork2.c
+-rw-r--r-- 1 cwh cwh   762 7月  24 11:40 fork3.c
+-rw-r--r-- 1 cwh cwh   803 7月  24 11:19 fork.c
+-rw-r--r-- 1 cwh cwh   568 7月  25 11:58 getpid.c
+-rw-r--r-- 1 cwh cwh  7657 7月  26 11:31 myshell.c
+-rw-r--r-- 1 cwh cwh   618 7月  25 10:21 processimage.c
+-rw-r--r-- 1 cwh cwh   748 7月  25 19:21 studyuid.c
+-rw-r--r-- 1 cwh cwh     0 7月  26 11:34 testforfun
+-rw-r--r-- 1 cwh cwh  1236 7月  25 10:54 wait.c
