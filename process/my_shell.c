@@ -1,5 +1,7 @@
 #include<stdio.h>
+#define  _GNU_SOURCE
 #include<string.h>
+#include<pwd.h>
 #include<stdlib.h>
 #include<sys/types.h>
 #include<unistd.h>
@@ -26,10 +28,15 @@ int main()
     int pid;
     int param=0;
     int k;//二维数组的一维大小
+    chdir("/home/cwh");
     while(1)
     {
         param=0;
-        buf=readline("cwh$:");
+        char tip[500];
+        struct passwd *pwd;
+        pwd=getpwuid(getuid());
+        sprintf(tip,"%s:%s$ ",pwd->pw_name,get_current_dir_name());
+        buf=readline(tip);
         if(strcmp(buf,"exit")==0)
             break;
         add_history(buf);//记录历史记录
@@ -88,6 +95,11 @@ void explain_param(char (*str)[256],int *param,int k)
     char file1[256],file2[256];
     for(i=0;i<len;i++)
     {
+        if(strcmp(str[i],"cd")==0)
+        {
+            flag=1;
+            continue;
+        }
 
         if(strcmp(str[i],">")==0)//一定要++i，不然就会重复读取
         {
@@ -134,9 +146,26 @@ void explain_param(char (*str)[256],int *param,int k)
         argv[i]=store[i];//指针数组就可以存char *NULL
     }
     argv[i]=(char*)NULL;
+    if(len==0&&store[0]=='\n')
+    {
+        printf("cwh@kevin:%s$ \n",get_current_dir_name());
+        return;
+    }
     pid_t pid;
-    pid=fork();
+    if(flag==0)
+        pid=fork();
 
+        if(flag)//如果有cd的情况
+        {
+            if(len!=1)
+            {
+                if(chdir(store[0])<0)
+                    printf("No such file or directory\n");
+            }
+            else
+                chdir("/home/cwh");
+            return ;
+        }
     if(pid==0)
     {
         int is_redirect=0;
@@ -156,10 +185,9 @@ void explain_param(char (*str)[256],int *param,int k)
             dup2(fd, STDOUT_FILENO);
         if(is_redirect==2)
             dup2(fd,STDIN_FILENO);
-
         int err=execvp(store[0], argv);
         if (err!=0)
-            perror("erro:");
+            perror("error:");
         exit(0);
     }
     if(pid == -1)
