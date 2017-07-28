@@ -11,17 +11,23 @@
 #include<readline/readline.h>
 #include<readline/history.h>
 
-#define RUNBACK 32
 #define PIPE 1
 #define IN 2
 #define OUT 4
-#define INAPP 8
 #define OUTAPP 16
 
-void print();
 int get_param(char *,char (*str)[256]);
 void explain_param(char (*str)[256],int *param,int k);
-int checkprogram(char *file1,char *file2);
+int getlenth(int start,char *buf);
+int getstart(int end,char *buf);
+/*int empty(char *str) 
+{
+    for (int i = 0; i < strlen(str); i++) {
+        if (str[i] != ' ')
+            return 0;
+    }
+    return 1;
+}*/
 int main()
 {
     char *buf;
@@ -41,48 +47,83 @@ int main()
         buf=readline(tip);
         if(strcmp(buf,"exit")==0)
             break;
-        add_history(buf);//记录历史记录
+        int isempty = empty(buf);
+        if (isempty)
+            continue;
+        add_history(buf);//记录历史记录，实现上下左右查看
         k=get_param(buf,str);
         explain_param(str,&param,k);
     }
     exit(0);
 }
+int getstart(int start,char * buf)//得到非空格下标
+{
+    start+=1;
+    while(buf[start]==' ' && start<=strlen(buf))
+        start++;
+    printf("start=%d\n",start);
+
+    return start;
+
+}
+int getlenth(int start,char *buf)//获得非空字符串长度
+{
+    int lenth=0;
+    for(int i=start+1;i<strlen(buf);i++)
+    {
+        if(buf[i]!=' ')
+        {
+            lenth++;
+        }
+        else
+            break;
+    }
+    printf("lenth=%d\n",lenth);
+    return lenth;
+}
 
 int get_param(char *buf,char (*str)[256])
 {
-    int i;
-    int j=0,k=0,q=0;
-    int start=0,end=0;
-    int flag=0;
-    strcat(buf, " ");
-    for(i=0;i<strlen(buf);i++)
+    int start=0,end=0,k=0;//方法一，判断函数起点和终点的空格问题
+    int flag;
+
+    while(end<strlen(buf))
     {
-        flag=0;
-        if(buf[i]==' ')
-        {
-            q=0;
-            start=i-1;
-            for(j=end;j<=start;j++)
-            {
-                flag=1;
-                str[k][q++]=buf[j];
-            }
-            for(j=start+1;j<strlen(buf);j++)
-            {
-                if(buf[j]!=' ')
-                {
-                    end=j;
-                    break;
-                }
-            }
-        }
-        if(flag)
-        {
-            str[k][q]='\0';
-            k++;
-        }
+        start=getstart(start,buf);
+        int lenth=getlenth(start,buf);
+        end=start+lenth;
+        printf("end is %d\n",end);
+        strncpy(str[k++],buf+start,lenth+1);//用strncpy可以实现从指定起始位置开始复制
+        if(strcmp(str[k-1],"\0")==0)
+            k--;
+        printf("k is =%d\n",k);
+        start=end;
+
     }
-    return k;
+}
+return k;
+
+    /*
+    char st[5000];//方法二
+    strcpy(st, buf);
+    char bf[5000], gf[5000];
+    int i = 0;
+    while (sscanf(st,"%s %[^\n]", bf, gf) == 2)//就是将输入分为两部分v
+    {
+        strcpy(str[i++], bf);
+        strcpy(st, gf);
+    }
+    strcpy(str[i++], st);
+    for (int j = strlen(str[i - 1]) - 1; j >= 0; j--)
+    {
+        if (str[i - 1][j] == ' ')
+            str[i - 1][j] = '\0';
+        else
+            break;
+    }
+	return k;
+    */
+
 }
 
 void explain_param(char (*str)[256],int *param,int k)
@@ -146,7 +187,7 @@ void explain_param(char (*str)[256],int *param,int k)
 
     char *argv[256];
     char *pipe[256];
-    if((*param)&PIPE)
+    if((*param)&PIPE)//记录管道符号的后半部分
     {
         for(i=0;i<file;i++)
             pipe[i]=file2[i];
@@ -158,10 +199,11 @@ void explain_param(char (*str)[256],int *param,int k)
         argv[i]=store[i];//指针数组就可以存char *NULL
     }
     argv[i]=(char*)NULL;
-    if(len==0)
+    if(len==0)//只是回车或者其他字符，直接返回
     {
         return;
     }
+
     pid_t pid;
     if(flag==0||back)
         pid=fork();
@@ -170,6 +212,7 @@ void explain_param(char (*str)[256],int *param,int k)
         printf("process id %d\n",pid);
         return ;
     }
+
 
         if(flag)//如果有cd的情况
         {
@@ -182,6 +225,7 @@ void explain_param(char (*str)[256],int *param,int k)
                 chdir("/home/cwh");
             return ;
         }
+
     if(pid==0)
     {
         int is_redirect=0;
@@ -196,28 +240,33 @@ void explain_param(char (*str)[256],int *param,int k)
         {
             fd=open("/tmp/cwhshelltxt",O_RDWR|O_CREAT|O_TRUNC,0644);
             dup2(fd,1);
-            execvp(store[0],argv);/////
+            execvp(store[0],argv);
             exit(0);
         }
+
         if(is_redirect && fd<0)
         {
             perror("open");
             exit(-1);
         }
+
         if(is_redirect==1)
             dup2(fd, STDOUT_FILENO);
         if(is_redirect==2)
             dup2(fd,STDIN_FILENO);
+
         int err=execvp(store[0], argv);
         if (err!=0)
             perror("error:");
         exit(0);
     }
+
     if(pid == -1)
     {
         printf("creat process failed!");
         return;
     }
+
     if(pid > 0)
     {
         waitpid(pid,NULL,0);
@@ -248,58 +297,4 @@ void explain_param(char (*str)[256],int *param,int k)
         return;
     }
 }
-
-/*int checkprogram(char *file1,char *file2)
-{
-    struct dirent *ptr;
-    DIR *fd;
-    int flag1=0,flag2=0;
-    char *pathname=get_current_dir_name();
-    int pd;
-    while(pathname!=NULL)
-        {
-            if((fd=opendir(pathname))==NULL)
-                printf("can't open it!");
-            while((ptr=readdir(fd))==NULL)
-            {
-                if(strcmp(ptr->d_name,file1)==0)
-                    flag1=1;
-                if(strcmp(ptr->d_name,file2)==0)
-                    flag2=1;
-            }
-        }
-    if(flag1==0||flag2==0)
-    {
-        printf("files don't exit!");
-        return 0;
-    }
-    if(flag1&&flag2)
-        return 1;
-    pid_t pid;
-    pid=fork();
-
-    if(pid==0)
-    {
-        pd=open("./txt",O_WRONLY|O_CREAT|O_TRUNC,0644);
-        dup2(pd,1);
-        execvp(argv[0],argv);
-        exit(0);
-    }
-    if(pid>0)
-    {
-        waitpid(pid,NULL,0);
-        pd=open("./txt",O_RDONLY);
-        char *end[100] = { file2, (char *)NULL };
-
-        execvp(end[0],end);
-        remove("./txt");
-        exit(0);
-        return;
-    }
-    if(pid==-1)
-    {
-        perror("fork:278");
-        return ;
-    }*/
-
 
