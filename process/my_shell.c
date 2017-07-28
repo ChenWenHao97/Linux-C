@@ -35,13 +35,18 @@ int main()
     int pid;
     int param=0;
     int k;//二维数组的一维大小
-    chdir("/home/cwh");
+    //chdir("/home/cwh");
+    //阻断SIGINT SIGQUIT SIGSTOP SIGTSTP
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGSTOP, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
     while(1)
     {
         param=0;
         char tip[500];
         struct passwd *pwd;
-
+        memset(str, 0, sizeof(str));
         pwd=getpwuid(getuid());
         sprintf(tip,"%s:%s$ ",pwd->pw_name,get_current_dir_name());
         buf=readline(tip);
@@ -91,12 +96,11 @@ int get_param(char *buf,char (*str)[256])
         int lenth=getlenth(start,buf);
         end=start+lenth+1;
         strncpy(str[k++],buf+start,lenth+1);//用strncpy可以实现从指定起始位置开始复制
-        if(strcmp(str[k-1],"\0")==0)
+        if(strcmp(str[k-1],"")==0)
             k--;
         start=end;
-
     }
-return k;
+    return k;
 }
 
     /*
@@ -125,7 +129,7 @@ return k;
 void explain_param(char (*str)[256],int *param,int k)
 {
     int i;
-    char store[100][256];//存ls参数
+    char store[100][256]={0};//存ls参数
     char rest[256];
     int back=0;
     int len=k;
@@ -246,8 +250,9 @@ void explain_param(char (*str)[256],int *param,int k)
             dup2(fd,STDIN_FILENO);
 
         int err=execvp(store[0], argv);
+
         if (err!=0)
-            perror("error:");
+            perror("#error#");
         exit(0);
     }
 
