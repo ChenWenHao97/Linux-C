@@ -20,7 +20,7 @@ int get_param(char *,char (*str)[256]);
 void explain_param(char (*str)[256],int *param,int k);
 int getlenth(int start,char *buf);
 int getstart(int end,char *buf);
-/*int empty(char *str) 
+/*int empty(char *str)
 {
     for (int i = 0; i < strlen(str); i++) {
         if (str[i] != ' ')
@@ -47,21 +47,20 @@ int main()
         buf=readline(tip);
         if(strcmp(buf,"exit")==0)
             break;
-        int isempty = empty(buf);
-        if (isempty)
-            continue;
+      //  int isempty = empty(buf);
+        //if (isempty)
+         //   continue;
         add_history(buf);//记录历史记录，实现上下左右查看
         k=get_param(buf,str);
         explain_param(str,&param,k);
     }
     exit(0);
 }
+
 int getstart(int start,char * buf)//得到非空格下标
 {
-    start+=1;
     while(buf[start]==' ' && start<=strlen(buf))
         start++;
-    printf("start=%d\n",start);
 
     return start;
 
@@ -78,7 +77,6 @@ int getlenth(int start,char *buf)//获得非空字符串长度
         else
             break;
     }
-    printf("lenth=%d\n",lenth);
     return lenth;
 }
 
@@ -91,17 +89,15 @@ int get_param(char *buf,char (*str)[256])
     {
         start=getstart(start,buf);
         int lenth=getlenth(start,buf);
-        end=start+lenth;
-        printf("end is %d\n",end);
+        end=start+lenth+1;
         strncpy(str[k++],buf+start,lenth+1);//用strncpy可以实现从指定起始位置开始复制
         if(strcmp(str[k-1],"\0")==0)
             k--;
-        printf("k is =%d\n",k);
         start=end;
 
     }
-}
 return k;
+}
 
     /*
     char st[5000];//方法二
@@ -124,7 +120,7 @@ return k;
 	return k;
     */
 
-}
+
 
 void explain_param(char (*str)[256],int *param,int k)
 {
@@ -161,12 +157,6 @@ void explain_param(char (*str)[256],int *param,int k)
         {
             (*param)|=IN;
             strcpy(rest,str[++i]);
-            continue;
-        }
-        if(strcmp(str[i],"<<")==0)
-        {
-            (*param)|=INAPP;
-            strcpy(rest,str[i+1]);
             continue;
         }
         if(strcmp(str[i],"|")==0)

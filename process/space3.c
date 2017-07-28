@@ -13,7 +13,7 @@ int main()
     {
         start=getstart(start,buf);
         int lenth=getlenth(start,buf);
-        end=start+lenth;
+        end=start+lenth+1;
         printf("end is %d\n",end);
         strncpy(str[k++],buf+start,lenth+1);
         if(strcmp(str[k-1],"\0")==0)
@@ -38,15 +38,15 @@ int getlenth(int start,char *buf)
             break;
     }
     printf("lenth=%d\n",lenth);
+    sleep(5);
     return lenth;
 }
 int getstart(int start,char * buf)
 {
-    start+=1;
     while(buf[start]==' ' && start<=strlen(buf))
         start++;
     printf("start=%d\n",start);
-
+    sleep(5);
     return start;
 
 }
