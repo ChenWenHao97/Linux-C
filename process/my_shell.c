@@ -10,6 +10,7 @@
 #include<dirent.h>
 #include<readline/readline.h>
 #include<readline/history.h>
+#include<signal.h>
 
 #define PIPE 1
 #define IN 2
