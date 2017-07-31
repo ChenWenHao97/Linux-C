@@ -1,2 +1,2 @@
 # !/bin/bash
-gcc my_shell.c -lreadline
+gcc my_shell.c -lreadline 

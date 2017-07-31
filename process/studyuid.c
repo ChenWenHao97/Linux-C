@@ -1,7 +1,7 @@
 /*************************************************************************
 	> File Name: studyuid.c
-	> Author: 
-	> Mail: 
+	> Author:
+	> Mail:
 	> Created Time: 2017年07月25日 星期二 19时15分47秒
  ************************************************************************/
 
@@ -26,7 +26,7 @@ int main()
         printf("open failture,errno is %d :%s \n",errno,strerror(errno));
         exit(1);
     }
-    else 
+    else
         printf("Open successfully!\n");
 
     close(fd);

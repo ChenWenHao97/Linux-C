@@ -1,7 +1,7 @@
 /*************************************************************************
 	> File Name: wait.c
-	> Author: 
-	> Mail: 
+	> Author:
+	> Mail:
 	> Created Time: 2017年07月25日 星期二 10时42分06秒
  ************************************************************************/
 
@@ -42,10 +42,10 @@ int main()
         printf("child process has exited,pid=%d\n",child_pid);
         if(WIFEXITED(stat_val))
             printf("child exited with code %d\n",WEXITSTATUS(stat_val));
-        else 
+        else
             printf("child exited abnormally\n");
     }
-    else 
+    else
     {
         while(k-->0)
         {

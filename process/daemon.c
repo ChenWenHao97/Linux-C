@@ -1,15 +1,16 @@
 /*************************************************************************
 	> File Name: daemon.c
-	> Author: 
-	> Mail: 
+	> Author:
+	> Mail:
 	> Created Time: 2017年07月24日 星期一 16时48分15秒
  ************************************************************************/
-
+#include<string.h>
 #include<stdio.h>
 #include<sys/types.h>
 #include<unistd.h>
 #include<signal.h>
 #include<sys/param.h>
+#include<fcntl.h>
 #include<sys/stat.h>
 #include<time.h>
 #include<syslog.h>
@@ -44,17 +45,18 @@ int init_daemon(void)
     umask(0);
 
     signal(SIGCHLD,SIG_IGN);
+    while(1)
+    {
+        int fd=open("/home/cwh/protect.txt",O_CREAT|O_APPEND|O_RDWR,0644);
+        char str[100];
+        strcpy(str,"just for test\n");
+        write(fd,str,strlen(str));
+        sleep(5);
+    }
     return 0;
 }
 int main()
 {
     time_t now;
     init_daemon();
-    syslog(LOG_USER|LOG_INFO,"测试守护进程！\n");
-    while(1)
-    {
-        sleep(8);
-        time(&now);
-        syslog(LOG_USER|LOG_INFO,"系统时间:\t%s\t\t\n",ctime(&now));
-    }
 }

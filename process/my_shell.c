@@ -1,4 +1,3 @@
-#define  _GNU_SOURCE
 #include<stdio.h>
 #include<string.h>
 #include<pwd.h>
@@ -21,14 +20,14 @@ int get_param(char *,char (*str)[256]);
 void explain_param(char (*str)[256],int *param,int k);
 int getlenth(int start,char *buf);
 int getstart(int end,char *buf);
-/*int empty(char *str)
+int empty(char *str)
 {
     for (int i = 0; i < strlen(str); i++) {
         if (str[i] != ' ')
             return 0;
     }
     return 1;
-}*/
+}
 int main()
 {
     char *buf;
@@ -36,7 +35,7 @@ int main()
     int pid;
     int param=0;
     int k;//二维数组的一维大小
-    //chdir("/home/cwh");
+    chdir("/home/cwh");
     //阻断SIGINT SIGQUIT SIGSTOP SIGTSTP
     signal(SIGINT, SIG_IGN);
     signal(SIGQUIT, SIG_IGN);
@@ -53,9 +52,9 @@ int main()
         buf=readline(tip);
         if(strcmp(buf,"exit")==0)
             break;
-      //  int isempty = empty(buf);
-        //if (isempty)
-         //   continue;
+        int isempty = empty(buf);
+        if (isempty)
+            continue;
         add_history(buf);//记录历史记录，实现上下左右查看
         k=get_param(buf,str);
         explain_param(str,&param,k);
