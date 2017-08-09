@@ -4,7 +4,7 @@ result:my_server.o my_client.o
 my_server.o:
 	gcc -c my_server.c
 my_client.o:
-	gcc -c my_client.c
+	gcc -c client.c
 clean:
 	rm client server
 	rm my_client.o my_server.o
