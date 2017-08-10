@@ -76,11 +76,11 @@ int main()
             perror("epoll_wait failed");
             exit(1);
         }
-        if(nfds==0)//如果没有接受到事件
+        /*if(nfds==0)//如果没有接受到事件
         {
             printf("anybody!\n");
 
-        }
+        }*/
             for(int i=0;i<nfds;i++)
                 {
                     if(events[i].data.fd==serv_sockfd)
@@ -106,7 +106,7 @@ int main()
                     }
                     else
                     {
-
+                        memset(buf,0,sizeof(buf));
                         int rv = recv(events[i].data.fd, buf, sizeof(buf), 0);
                         if(rv<0)
                         {
@@ -131,8 +131,9 @@ int main()
                             exit(1);
 
                         }
-                        if(!mysql_real_connect(mysql,HOST,USER,PASSWD,DB,0,NULL,0))//connect
+                        if(!mysql_real_connect(mysql,HOST,USER,PASSWD,DB,0,NULL,0))
                         {
+                            //连接确定的数据库，可以不在用use 。。。
                             printf("failed to connect,line:%d",__LINE__);
                             exit(1);
                         }
@@ -148,7 +149,7 @@ int main()
                         memset(insert,0,sizeof(insert));//insert
                         strcpy(insert,"insert into test (name,password) values ('");
                         strcat(insert,name->valuestring);
-                        strcat(insert,"','");
+                        strcat(insert,"','");//注意‘号
                         strcat(insert,password->valuestring);
                         strcat(insert,"');");
                         if(!mysql_real_query(mysql,insert,strlen(insert)))
@@ -163,13 +164,14 @@ int main()
                         if((t=mysql_query(mysql,"select * from test"))!=0)
                             printf("failed to search,line:%d",__LINE__);
                         res=mysql_store_result(mysql);
+                        printf("show tables:\n");
                         while(row=mysql_fetch_row(res))
                         {
                             for(t=0;t<mysql_num_fields(res);t++)
                                 printf("%s\t",row[t]);
+                            putchar('\n');
                         }
                         mysql_free_result(res);
-                        //printf("server recv:%s\n",qq->valuestring);
                         send(events[i].data.fd,"I have received your info",40,0);
                     }
 

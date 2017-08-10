@@ -37,11 +37,14 @@ int main()
     }
     while(1)
     {
-        char buf2[40];
-        printf("please input info:");
+        char buf2[40];//密码和用户名不能有空格
+        printf("please input name:");
         scanf(" %s",buf);
+        if(strcmp(buf,"quit")==0)
+            break;
+        printf("please input password:");
         scanf(" %s",buf2);
-        if(strcmp(buf,"quit")==0||strcmp(buf2,"quit")==0)
+        if(strcmp(buf2,"quit")==0)
             break;
 
         cJSON * root;
