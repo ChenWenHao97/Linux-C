@@ -14,14 +14,21 @@
 #include<string.h>
 #include<sys/epoll.h>
 #include<unistd.h>
+#include<cJSON.h>
+#include<mysql.h>
+#include<assert.h>
+#define HOST "127.0.0.1"
+#define USER "root"
+#define PASSWD "173874"
+#define DB "TESTDB"
 int main()
 {
     struct sockaddr_in serv_addr,client_addr;
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family=AF_INET;
     serv_addr.sin_addr.s_addr=INADDR_ANY;
-    serv_addr.sin_port=htons(4507);
-    char buf[40];
+    serv_addr.sin_port=htons(45077);
+    char buf[400];
     int serv_sockfd;
     int client_sockfd;
 
@@ -99,7 +106,8 @@ int main()
                     }
                     else
                     {
-                        int rv = recv(events[i].data.fd, buf, 40, 0);
+
+                        int rv = recv(events[i].data.fd, buf, sizeof(buf), 0);
                         if(rv<0)
                         {
                             perror("client recv failed");
@@ -110,7 +118,58 @@ int main()
                             epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd,&ev);
                             continue;//删除死亡客户端，防止服务器崩溃
                         }
-                        printf("server recv:%s\n",buf);
+                        cJSON * root;
+                        root=cJSON_Parse(buf);
+                        
+                        cJSON *name = cJSON_GetObjectItem(root,"name");
+                        cJSON *password=cJSON_GetObjectItem(root,"password");
+                        
+                        MYSQL *mysql=mysql_init(NULL);
+                        if(mysql==NULL)
+                        {
+                            printf("mysql_init failed,line:%d\n",__LINE__);
+                            exit(1);
+
+                        }
+                        if(!mysql_real_connect(mysql,HOST,USER,PASSWD,DB,0,NULL,0))//connect
+                        {
+                            printf("failed to connect,line:%d",__LINE__);
+                            exit(1);
+                        }
+                        else
+                            printf("connct database successful!\n");
+
+                        //if(!mysql_query(mysql,"use TESTDB"))//change
+                        //    printf("change successful!\n");
+                        //else 
+                        //    printf("change database failed.line:%d",__LINE__);
+                        
+                        char insert[256];
+                        memset(insert,0,sizeof(insert));//insert
+                        strcpy(insert,"insert into test (name,password) values ('");
+                        strcat(insert,name->valuestring);
+                        strcat(insert,"','");
+                        strcat(insert,password->valuestring);
+                        strcat(insert,"');");
+                        if(!mysql_real_query(mysql,insert,strlen(insert)))
+                            printf("插入数据成功！");
+                        else 
+                            printf("insert error,line:%d",__LINE__);
+                        
+
+                        MYSQL_RES *res;//line
+                        MYSQL_ROW row;//colu
+                        int t;
+                        if((t=mysql_query(mysql,"select * from test"))!=0)
+                            printf("failed to search,line:%d",__LINE__);
+                        res=mysql_store_result(mysql);
+                        while(row=mysql_fetch_row(res))
+                        {
+                            for(t=0;t<mysql_num_fields(res);t++)
+                                printf("%s\t",row[t]);
+                        }
+                        mysql_free_result(res);
+                        //printf("server recv:%s\n",qq->valuestring);
                         send(events[i].data.fd,"I have received your info",40,0);
                     }
 

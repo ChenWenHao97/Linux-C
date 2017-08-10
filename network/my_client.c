@@ -12,15 +12,18 @@
 #include<sys/types.h>
 #include<sys/socket.h>
 #include<arpa/inet.h>
+#include<cJSON.h>
+
+void my_error(char *string,int line);
 int main()
 {
     struct sockaddr_in addr;
     memset(&addr,0,sizeof(addr));
     int client_fd;
-    char buf[40];
+    char buf[400];
     memset(buf,0,sizeof(buf));
     addr.sin_family=AF_INET;
-    addr.sin_port=htons(4507);
+    addr.sin_port=htons(45077);
     addr.sin_addr.s_addr=inet_addr("127.0.0.1");//服务器地址
     if((client_fd=socket(AF_INET,SOCK_STREAM,0))<0)//创建客户端套接字
     {
@@ -34,18 +37,28 @@ int main()
     }
     while(1)
     {
+        char buf2[40];
         printf("please input info:");
         scanf(" %s",buf);
-        if(strcmp(buf,"quit")==0)
+        scanf(" %s",buf2);
+        if(strcmp(buf,"quit")==0||strcmp(buf2,"quit")==0)
             break;
-        if(send(client_fd,buf,sizeof(buf),0)<0)
+
+        cJSON * root;
+        root=cJSON_CreateObject();
+        cJSON_AddStringToObject(root,"name",buf);
+        cJSON_AddStringToObject(root,"password",buf2);
+        char *out=cJSON_Print(root);
+        if(send(client_fd,out,strlen(out),0)<0)
         {
             perror("senf faild!");
+            printf("line:%d",__LINE__);
             exit(1);
         }
         if(recv(client_fd,buf,sizeof(buf),0)<0)
         {
             perror("recv failed!");
+            printf("line:%d",__LINE__);
             exit(1);
         }
         printf("you receive :%s\n",buf);
@@ -54,4 +67,3 @@ int main()
     printf("thanks for using!\n");
     return 0;
 }
-
