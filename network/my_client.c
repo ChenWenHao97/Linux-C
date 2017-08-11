@@ -23,7 +23,7 @@ int main()
     char buf[400];
     memset(buf,0,sizeof(buf));
     addr.sin_family=AF_INET;
-    addr.sin_port=htons(45077);
+    addr.sin_port=htons(4507);
     addr.sin_addr.s_addr=inet_addr("127.0.0.1");//服务器地址
     if((client_fd=socket(AF_INET,SOCK_STREAM,0))<0)//创建客户端套接字
     {
@@ -37,6 +37,8 @@ int main()
     }
     while(1)
     {
+        system("sl");
+        system("clear");
         char buf2[40];//密码和用户名不能有空格
         printf("please input name:");
         scanf(" %s",buf);

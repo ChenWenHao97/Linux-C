@@ -27,7 +27,7 @@ int main()
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family=AF_INET;
     serv_addr.sin_addr.s_addr=INADDR_ANY;
-    serv_addr.sin_port=htons(45077);
+    serv_addr.sin_port=htons(4507);
     char buf[400];
     int serv_sockfd;
     int client_sockfd;
@@ -145,7 +145,7 @@ int main()
                         //else 
                         //    printf("change database failed.line:%d",__LINE__);
                         
-                        char insert[256];
+                       /* char insert[256];//write
                         memset(insert,0,sizeof(insert));//insert
                         strcpy(insert,"insert into test (name,password) values ('");
                         strcat(insert,name->valuestring);
@@ -155,23 +155,40 @@ int main()
                         if(!mysql_real_query(mysql,insert,strlen(insert)))
                             printf("插入数据成功！");
                         else 
-                            printf("insert error,line:%d",__LINE__);
+                            printf("insert error,line:%d",__LINE__);*/
                         
 
                         MYSQL_RES *res;//line
                         MYSQL_ROW row;//colu
-                        int t;
+                        char search[256];
+                        memset(search,0,sizeof(search));
+                        strcpy(search,"select * from account where name=\"");
+                        strcat(search,name->valuestring);
+                        strcat(search,"\" and ");
+                        strcat(search,"password=\"");
+                        strcat(search,password->valuestring);
+                        strcat(search,"\";");
+                        printf("%s \n",search);
+                        if(!mysql_real_query(mysql,search,strlen(search)))
+                            printf("登陆成功！\n");
+                        else
+                            {
+                                printf("登录失败！\n");
+                                exit(1);
+                            }
+                        /*int t;
                         if((t=mysql_query(mysql,"select * from test"))!=0)
                             printf("failed to search,line:%d",__LINE__);
-                        res=mysql_store_result(mysql);
+                        res=mysql_store
+_result(mysql);
                         printf("show tables:\n");
                         while(row=mysql_fetch_row(res))
                         {
                             for(t=0;t<mysql_num_fields(res);t++)
                                 printf("%s\t",row[t]);
                             putchar('\n');
-                        }
-                        mysql_free_result(res);
+                        }*/
+    //                        mysql_free_result(res);
                         send(events[i].data.fd,"I have received your info",40,0);
                     }
 
