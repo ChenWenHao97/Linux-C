@@ -38,7 +38,7 @@ int main()
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family=AF_INET;
     serv_addr.sin_addr.s_addr=INADDR_ANY;
-    serv_addr.sin_port=htons(4507);
+    serv_addr.sin_port=htons(45077);
     int serv_sockfd,client_sockfd;
 
     if((serv_sockfd=socket(AF_INET,SOCK_STREAM,0))<0)//套接字创建
@@ -90,6 +90,8 @@ int main()
     }
     return 0;
 }
+
+
 void *thread(void )
 {
    struct epoll_event events[40];
@@ -125,23 +127,23 @@ void *thread(void )
                case 0:
                    log_in(buf,events[i].data.fd);
                    break;
-              /* case 1:
+               case 1:
                    log_up(buf,events[i].data.fd);
                    break;
                case 2:
                    find_passwd(buf,events[i].data.fd);
-                   break;*/
+                   break;
             }
         }
     }
 }
+
 void log_in(char *buf,int fd)
 {
     cJSON *out;
     out=cJSON_Parse(buf);
     cJSON *name=cJSON_GetObjectItem(out,"name");
     cJSON *password=cJSON_GetObjectItem(out,"password");
-    int clo;
     MYSQL_ROW row;
     char result[100];
     memset(result,0,sizeof(result));
@@ -161,8 +163,94 @@ void log_in(char *buf,int fd)
         send(fd,"错误",20,0);
     else 
         send(fd,"登录成功!",20,0);
-
+    mysql_free_result(res);
 }
+
+void log_up(char *buf,int fd)
+{
+    MYSQL_ROW row;
+    MYSQL_RES * res;
+    char result[500];
+    cJSON *out=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(out,"name");
+    cJSON *password=cJSON_GetObjectItem(out,"password");
+    cJSON *question=cJSON_GetObjectItem(out,"question");
+    cJSON *answer=cJSON_GetObjectItem(out,"answer");
+    memset(result,0,sizeof(result));
+    strcpy(result,"select * from account where name=\"");
+    strcat(result,name->valuestring);
+    strcat(result,"\";");
+    if(mysql_real_query(mysql,result,sizeof(result))!=0)
+    {
+        my_error("log_up search failed",__LINE__);
+    }
+    res=mysql_store_result(mysql);
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg==0)
+    {
+        memset(result,0,sizeof(result));
+        strcpy(result,"insert into account value(\"");//注意格式问题
+        strcat(result,name->valuestring);
+        strcat(result,"\",\"");
+        strcat(result,password->valuestring);
+        strcat(result,"\",\"");
+        strcat(result,question->valuestring);
+        strcat(result,"\",\"");
+        strcat(result,answer->valuestring);
+        strcat(result,"\");");
+        if(mysql_real_query(mysql,result,sizeof(result))!=0)
+        {
+            my_error("log_up query failed",__LINE__);
+        }
+        send(fd,"注册成功!",20,0);
+    }
+    else 
+        send(fd,"账号已存在!",20,0);
+    mysql_free_result(res);
+}
+
+void find_passwd(char *buf,int fd)
+{
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(root,"name");
+    cJSON *password=cJSON_GetObjectItem(root,"password");
+    cJSON *question=cJSON_GetObjectItem(root,"question");
+    cJSON *answer=cJSON_GetObjectItem(root,"answer");
+    char result[400];
+
+    memset(result,0,sizeof(buf));
+    strcpy(result,"select * from account where name=\"");
+    strcat(result,name->valuestring);
+    strcat(result,"\"and question=\"");
+    strcat(result,question->valuestring);
+    strcat(result,"\"and answer=\"");
+    strcat(result,answer->valuestring);
+    strcat(result,"\";");
+    if(mysql_real_query(mysql,result,sizeof(result))!=0)
+    {
+        my_error("query failed",__LINE__);
+    }
+    MYSQL_RES * res;
+    res=mysql_store_result(mysql);
+    if(res==NULL)
+        send(fd,"输入信息有误",20,0);
+    else 
+    {
+        memset(result,0,sizeof(result));
+        strcpy(result,"update account set password=\"");
+        strcat(result,password->valuestring);
+        strcat(result,"\" where name=\"");
+        strcat(result,name->valuestring);
+        strcat(result,"\";");
+        if(mysql_real_query(mysql,result,sizeof(result))!=0)
+        {
+            my_error("query failed",__LINE__);
+        }
+        send(fd,"修改成功!",20,0);
+    }
+    mysql_free_result(res);
+}
+
 void my_error(char *string,int line)
 {
     fprintf(stderr,"line:%d",line);
