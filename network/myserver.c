@@ -26,6 +26,12 @@
 void my_error(char *string,int line);
 int epoll_fd;
 void *thread(void);
+void log_in(char *buf,int fd);
+void log_up(char *buf,int fd);
+void find_passwd(char *buf,int fd);
+MYSQL *mysql;
+
+
 int main()
 {
     struct sockaddr_in serv_addr,client_addr;
@@ -48,6 +54,11 @@ int main()
         my_error("listen",__LINE__);
     }
 
+    mysql=mysql_init(NULL);
+    if(mysql_real_connect(mysql,HOST,USER,PASSWD,DB,0,NULL,0)==NULL)
+    {
+        my_error("mysql connect",__LINE__);
+    }
     epoll_fd=epoll_create(40);
     pthread_t pid;
     if(pthread_create(&pid,NULL,(void *)thread,NULL)!=0)//线程创建
@@ -105,23 +116,52 @@ void *thread(void )
                 epoll_ctl(epoll_fd,EPOLL_CTL_DEL,events[i].data.fd,&event);
                 continue;
             }
+        
+            cJSON *root;
+            root=cJSON_Parse(buf);
+            cJSON * type=cJSON_GetObjectItem(root,"type");
+            switch(type->valueint)
+            {
+               case 0:
+                   log_in(buf,events[i].data.fd);
+                   break;
+              /* case 1:
+                   log_up(buf,events[i].data.fd);
+                   break;
+               case 2:
+                   find_passwd(buf,events[i].data.fd);
+                   break;*/
+            }
         }
-        printf("###buf%s###",buf);
-        /*cJSON *root;
-        root=cJSON_Print(buf);
-        cJSON * type=cJSON_GetObjectItem(root,"type");
-        switch(type->valuestring)
-        {
-            case "log_in":
-                break;
-            case "log_up":
-                break;
-            case "find_passwd":
-                break;
-        }*/
-
-
     }
+}
+void log_in(char *buf,int fd)
+{
+    cJSON *out;
+    out=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(out,"name");
+    cJSON *password=cJSON_GetObjectItem(out,"password");
+    int clo;
+    MYSQL_ROW row;
+    char result[100];
+    memset(result,0,sizeof(result));
+    strcpy(result,"select * from account where name=\"");
+    strcat(result,name->valuestring);
+    strcat(result,"\"");
+    strcat(result," and password=\"");
+    strcat(result,password->valuestring);
+    strcat(result,"\";");
+    MYSQL_RES * res; 
+    if( mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("mysql query failed",__LINE__);
+    }
+    res=mysql_store_result(mysql);
+    if(res==NULL)
+        send(fd,"错误",20,0);
+    else 
+        send(fd,"登录成功!",20,0);
+
 }
 void my_error(char *string,int line)
 {

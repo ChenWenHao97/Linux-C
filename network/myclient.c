@@ -27,7 +27,7 @@
 //向右移动光标
 #define cursor_right(n) \
     fprintf(stderr, "\033[%dC", (n))
-#define START "\t\t\t\t\t************************************************************************************\n"
+#define START "\t************************************************************************************\n"
 
 int getch();
 void log_in(int client_fd);
@@ -61,7 +61,10 @@ int main()
         char buf[20];
         log_in_ui();
         memset(buf,0,sizeof(buf));
-        scanf("%d",&choice);
+        fprintf(stderr,"\033[20C");
+        scanf("%d%*c",&choice);
+        system("clear");
+        log_in_ui();
         switch(choice)
         {
             case 1:
@@ -84,11 +87,11 @@ void log_in_ui()
 {   
     system("clear");
     printf(START);
-    printf("\t\t\t\t\t\t\t\t欢迎来到聊天室\n");
-    printf("请输入您的选项：\n");
-    printf("\t\t1、登录\n");
-    printf("\t\t2、注册\n");
-    printf("\t\t3、找回密码\n");
+    printf("\t\t\t\t\t 欢迎来到聊天室\n");
+    printf("\n\n\t\t\t 请输入您的选项：\n");
+    printf("\t\t\t\t\t 1、登录\n");
+    printf("\t\t\t\t\t 2、注册\n");
+    printf("\t\t\t\t\t 3、找回密码\n");
     printf(START);
 }
 
@@ -199,7 +202,7 @@ void log_in_ui()
                 cJSON_AddStringToObject(root,"password",passwd1);
                 cJSON_AddStringToObject(root,"question",question);
                 cJSON_AddStringToObject(root,"answer",answer);
-                cJSON_AddStringToObject(root,"type","log_up");
+                cJSON_AddNumberToObject(root,"type",1);
                 char *out=cJSON_Print(root);
                 if(send(client_fd,out,strlen(out),0)<0)
                 {
@@ -226,11 +229,11 @@ void log_in(int client_fd)
     int i=0;
     char passwd[20];
     int count=0;
-    printf("用户名:\n密码:\033[1A");
+    printf("\t\t\t用户名:\n\t\t\t密码:\033[1A\033[3C");
     char name[100], password[30];
     fgets(name,100,stdin);
     name[strlen(name)]='\0';
-    fprintf(stderr,"\033[9C");
+    fprintf(stderr,"\033[29C");
     while(1)
     {
         if(i!=0)
@@ -249,7 +252,7 @@ void log_in(int client_fd)
                 passwd[--i]='\0';
             }
             if (t != 127)
-           {
+            {
                 printf("*");
                 passwd[i++] = t;
             }
@@ -263,7 +266,7 @@ void log_in(int client_fd)
         root=cJSON_CreateObject();
         cJSON_AddStringToObject(root,"name",name);
         cJSON_AddStringToObject(root,"password",password);
-        cJSON_AddStringToObject(root,"type","log_in");
+        cJSON_AddNumberToObject(root,"type",0);
         char *out=cJSON_Print(root);
          if(send(client_fd,out,strlen(out),0)<0)
         {
@@ -274,12 +277,12 @@ void log_in(int client_fd)
         {
             my_error("recv failed",__LINE__);
         }
-        if(strcmp(buf,"登录成功！")==0)
+        if(strcmp(buf,"登录成功!")==0)
             {
-                printf("\t\t\t\t%s\n",buf);
-                sleep(2);
-                system("sl");
-                system("clear");
+                printf("\n\n\t\t\t\t\t%s\n",buf);
+                sleep(1);
+              //  system("sl");
+                //system("clear");
                 break;
             }
         else
@@ -333,7 +336,7 @@ void find_passwd(int client_fd)
         cJSON_AddStringToObject(root,"name",name);
         cJSON_AddStringToObject(root,"question",question);
         cJSON_AddStringToObject(root,"answer",answer);
-        cJSON_AddStringToObject(root,"type","find_passwd");
+        cJSON_AddNumberToObject(root,"type",2);
         char *out=cJSON_Print(root);
         if(send(client_fd,out,strlen(out),0)<0)
         {
