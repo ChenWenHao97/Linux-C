@@ -160,10 +160,16 @@ void log_in(char *buf,int fd)
     }
     res=mysql_store_result(mysql);
     if(res==NULL)
-        send(fd,"错误",20,0);
+        {
+            send(fd,"错误",20,0);
+            mysql_free_result(res);
+        }
     else 
-        send(fd,"登录成功!",20,0);
-    mysql_free_result(res);
+       {
+            send(fd,"登录成功!",20,0);
+            mysql_free_result(res);
+
+       }
 }
 
 void log_up(char *buf,int fd)
