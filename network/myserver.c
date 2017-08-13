@@ -160,16 +160,24 @@ void log_in(char *buf,int fd)
     }
     res=mysql_store_result(mysql);
     if(res==NULL)
-        {
-            send(fd,"错误",20,0);
-            mysql_free_result(res);
-        }
+    {
+        send(fd,"错误",20,0);
+        mysql_free_result(res);
+    }
     else 
-       {
-            send(fd,"登录成功!",20,0);
-            mysql_free_result(res);
+    {
+        send(fd,"登录成功!",20,0);
+        mysql_free_result(res);
+    }
 
-       }
+    memset(result,0,sizeof(result));
+    strcpy(result,"update all_online set status =1 where name=\"");//改变在线状态
+    strcat(result,name->valuestring);
+    strcat(result,"\";");
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("query change status ",__LINE__);
+    }
 }
 
 void log_up(char *buf,int fd)
@@ -191,8 +199,8 @@ void log_up(char *buf,int fd)
         my_error("log_up search failed",__LINE__);
     }
     res=mysql_store_result(mysql);
-    int jdg=mysql_affected_rows(mysql);
-    if(jdg==0)
+    //int jdg=mysql_affected_rows(mysql);
+    if(res==NULL)
     {
         memset(result,0,sizeof(result));
         strcpy(result,"insert into account value(\"");//注意格式问题

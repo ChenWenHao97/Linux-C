@@ -35,7 +35,7 @@ void log_up(int client_fd);
 void my_error(char *string,int line);
 void log_in_ui();
 void find_passwd(int client_fd);
-
+void log_after_ui();
 int main()
 {
     struct sockaddr_in addr;
@@ -87,7 +87,6 @@ int main()
 }
 
 
-
 void log_in_ui()
 {   
     system("clear");
@@ -100,7 +99,110 @@ void log_in_ui()
     printf(START);
 }
 
- void log_up(int client_fd)
+void log_in(int client_fd)
+{
+    int i=0;
+    char passwd[20];
+    int count=0;
+    char name[100];
+    while(1)
+    {
+        if(i!=0)
+            log_in_ui();
+        printf("\t\t\t用户名:\n\t\t\t密码:\033[1A\033[3C");
+        fgets(name,100,stdin);
+        if(strcmp(name,"\n")==0)
+        {
+            printf("\n\t\t\t\t用户名非法，请重新输入!\n");
+            sleep(2);
+            system("clear");
+            i=1;
+            continue;
+        }
+        name[strlen(name)-1]='\0';
+        fprintf(stderr,"\033[29C");
+        break;
+    }
+    i=0;
+    while(1)
+    {
+        if(i!=0)
+            printf("\t\t\t\t请再次输入密码:");
+        for(i=0;;)
+        {
+            char t=getch();
+            if(t=='\n'||t=='\r')
+            {
+                passwd[i]='\0';
+                break;
+            }
+            if(t==127&&i>=1)
+            {
+                printf("\b \b");
+                passwd[--i]='\0';
+            }
+            if (t != 127)
+            {
+                printf("*");
+                passwd[i++] = t;
+            }
+            if(i<0)
+            {
+                passwd[0]='\0';
+                i=0;
+            } 
+        }
+        cJSON * root;
+        root=cJSON_CreateObject();
+        cJSON_AddStringToObject(root,"name",name);
+        cJSON_AddStringToObject(root,"password",passwd);
+        cJSON_AddNumberToObject(root,"type",0);
+        char *out=cJSON_Print(root);
+         if(send(client_fd,out,strlen(out),0)<0)
+        {
+            my_error("send failed",__LINE__);
+        }
+        char buf[20];
+        if(recv(client_fd,buf,sizeof(buf),0)<0)
+        {
+            my_error("recv failed",__LINE__);
+        }
+        if(strcmp(buf,"登录成功!")==0)
+            {
+                printf("\n\n\t\t\t\t\t%s\n",buf);
+                sleep(2);
+            //system("sl");
+                system("clear");
+                break;
+            }
+        else
+            count++;
+        if(count!=3)
+            printf("\t\t\t\t您已输错%d次,还有%d次机会!\n",count,3-count);
+        if(count==3)
+        {
+            printf("\t\t\t\t您已输错3次！\n");
+            exit(1);
+        }
+    }
+    log_after_ui();//登录之后的界面
+
+
+}
+
+void log_after_ui()//登录之后的界面
+{
+    system("clear");
+    printf(START);
+    printf("1、查看在线好友\n");
+    printf("2、添加好友\n");
+    printf("3、查看好友请求\n");
+    printf("4、搜索好友\n");
+    printf("5、删除好友\n");
+    printf("6、查看所有群\n");
+}
+
+ void log_up(int client_fd)//注册
  {
     char passwd1[20],passwd2[20],name[100];
     int i=0,count=0;
@@ -226,6 +328,7 @@ void log_in_ui()
             if(strcmp(buf,"注册成功!")==0)
             {
                 printf("\n\t\t\t\t%s\n",buf);
+                sleep(3);
 			    break;//退出大循环
             }
             else 
@@ -238,94 +341,8 @@ void log_in_ui()
     }
 }
 
-void log_in(int client_fd)
-{
-    int i=0;
-    char passwd[20];
-    int count=0;
-    char name[100];
-    while(1)
-    {
-        if(i!=0)
-            log_in_ui();
-        printf("\t\t\t用户名:\n\t\t\t密码:\033[1A\033[3C");
-        fgets(name,100,stdin);
-        if(strcmp(name,"\n")==0)
-        {
-            printf("\n\t\t\t\t用户名非法，请重新输入!\n");
-            sleep(2);
-            system("clear");
-            i=1;
-            continue;
-        }
-        name[strlen(name)-1]='\0';
-        fprintf(stderr,"\033[29C");
-        break;
-    }
-    i=0;
-    while(1)
-    {
-        if(i!=0)
-            printf("\t\t\t\t请再次输入密码:");
-        for(i=0;;)
-        {
-            char t=getch();
-            if(t=='\n'||t=='\r')
-            {
-                passwd[i]='\0';
-                break;
-            }
-            if(t==127&&i>=1)
-            {
-                printf("\b \b");
-                passwd[--i]='\0';
-            }
-            if (t != 127)
-            {
-                printf("*");
-                passwd[i++] = t;
-            }
-            if(i<0)
-            {
-                passwd[0]='\0';
-                i=0;
-            } 
-        }
-        cJSON * root;
-        root=cJSON_CreateObject();
-        cJSON_AddStringToObject(root,"name",name);
-        cJSON_AddStringToObject(root,"password",passwd);
-        cJSON_AddNumberToObject(root,"type",0);
-        char *out=cJSON_Print(root);
-         if(send(client_fd,out,strlen(out),0)<0)
-        {
-            my_error("send failed",__LINE__);
-        }
-        char buf[20];
-        if(recv(client_fd,buf,sizeof(buf),0)<0)
-        {
-            my_error("recv failed",__LINE__);
-        }
-        if(strcmp(buf,"登录成功!")==0)
-            {
-                printf("\n\n\t\t\t\t\t%s\n",buf);
-                sleep(2);
-            //system("sl");
-                system("clear");
-                break;
-            }
-        else
-            count++;
-        if(count!=3)
-            printf("\t\t\t\t您已输错%d次,还有%d次机会!\n",count,3-count);
-        if(count==3)
-        {
-            printf("\t\t\t\t您已输错3次！\n");
-            exit(1);
-        }
-    }
-}
-int getch()
+
+int getch()//getch实现
 {
     int c=0;
     struct termios org_opts, new_opts;
@@ -343,7 +360,7 @@ int getch()
     assert(res==0);
     return c;
 }
-void find_passwd(int client_fd)
+void find_passwd(int client_fd)//找回密码
 {
     char name[20];
     char question[100];
