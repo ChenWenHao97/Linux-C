@@ -29,8 +29,20 @@ void *thread(void);
 void log_in(char *buf,int fd);
 void log_up(char *buf,int fd);
 void find_passwd(char *buf,int fd);
+void create_table(char *name);//建立每个人的表
+void change_status(char *name);//改变每个人在线状态
+void search_online_friend(char *buf,int fd);
+/*void add_friend(char *name,int fd);
+void friend_ask(char *name,int fd);
+void search_friend(char *name,int fd);
+void search_group(char *name,int fd);*/
+typedef struct LINK_USER {
+    char name[20];
+    int status;
+    struct LINK_USER *next;
+} LINK_USER;
+LINK_USER *head=NULL,*p,*q;
 MYSQL *mysql;
-
 
 int main()
 {
@@ -133,6 +145,22 @@ void *thread(void )
                case 2:
                    find_passwd(buf,events[i].data.fd);
                    break;
+               case 3:
+                    search_online_friend(buf,events[i].data.fd);
+                    break;
+               case 4:
+                    add_friend(buf,events[i].data.fd );
+                    break;/*
+               case 5:
+                    friend_ask(buf,events[i].data.fd);
+                    break;
+               case 6:
+                    search_friend(buf,events[i].data.fd);
+                    break;
+               case 7:
+                    search_group(buf,events[i].data.fd);
+                    break;*/
+            
             }
         }
     }
@@ -159,7 +187,8 @@ void log_in(char *buf,int fd)
         my_error("mysql query failed",__LINE__);
     }
     res=mysql_store_result(mysql);
-    if(res==NULL)
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg==0)
     {
         send(fd,"错误",20,0);
         mysql_free_result(res);
@@ -168,16 +197,101 @@ void log_in(char *buf,int fd)
     {
         send(fd,"登录成功!",20,0);
         mysql_free_result(res);
+	    change_status(name->valuestring);//改变在线状态
     }
-
+}
+void change_status(char *name)//改变在线状态
+{
+    LINK_USER * find;
+    find=head;
+    while(find!=NULL)
+    {
+        if(strcmp(find->name,name)==0)
+        {
+            find->status=1;
+            break;
+        }
+        find=find->next;
+    }
+    free(find);
+}
+void search_online_friend(char *buf,int fd)//查看在线好友
+{
+    cJSON *out=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(out,"name");
+    char result[500];
     memset(result,0,sizeof(result));
-    strcpy(result,"update all_online set status =1 where name=\"");//改变在线状态
+    strcpy(result,"select name from ");
     strcat(result,name->valuestring);
-    strcat(result,"\";");
+    strcat(result,"where friend=1;");//是朋友再查看
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
-        my_error("query change status ",__LINE__);
+        my_error("friend name",__LINE__);
     }
+    MYSQL_RES * res=mysql_store_result(mysql);
+    MYSQL_ROW row;
+    while(row=mysql_fetch_row(res))//更新用户好友信息
+    {
+        LINK_USER *find=head;
+        while(find)
+        {
+            if(strcmp(row[0],find->name)==0&&find->status==1)
+            {
+                char status[100];
+                memset(status,0,sizeof(status));
+                strcpy(status,"update ");
+                strcat(status,name->valuestring);
+                strcat(status," set status =1 where name=\"");
+                strcat(status,row[0]);
+                strcat(status,"\";");
+                if(mysql_real_query(mysql,status,strlen(status))!=0)
+                {
+                    my_error("update stauts",__LINE__);
+                }
+                break;
+            }
+            find=find->next;
+        }
+    }
+    memset(result,0,sizeof(result));
+    strcpy(result,"select name from ");
+    strcat(result,name->valuestring);
+    strcat(result," where status=1;");
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("search_online_friend",__LINE__);
+    }
+    res=mysql_store_result(mysql);
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg==0)
+    {
+        send(fd,"没有好友在线",20,0);
+    }
+    else 
+    {
+        //保存在二维数组
+        MYSQL_ROW row;
+        cJSON * root=cJSON_CreateObject();
+        cJSON *arr=cJSON_CreateArray();
+        cJSON *new;
+        cJSON_AddItemToArray(arr,new=cJSON_CreateObject());
+        while(row=mysql_fetch_row(res))
+        {
+            cJSON_AddItemToObject(new,"name",cJSON_CreateString(row[0]));
+        }
+        cJSON_AddItemToObject(root,"list",arr);
+        char *out=cJSON_Print(root);
+        send(fd,out,strlen(out),0);
+    }
+    mysql_free_result(res);
+}
+void add_friend(char *buf,int fd)
+{
+    system("clear");
+    printf("\t\t\t\t请输入您要添加好友的姓名:");
+    char addname[20];
+    scanf(" %s",name);
+
 }
 
 void log_up(char *buf,int fd)
@@ -198,9 +312,17 @@ void log_up(char *buf,int fd)
     {
         my_error("log_up search failed",__LINE__);
     }
+    p=(LINK_USER *)malloc(sizeof(LINK_USER));
+    strcpy(p->name,name->valuestring);
+    if(head==NULL)//建立链表
+        head=p;
+    else 
+        q->next=p;
+    q=p;
+
     res=mysql_store_result(mysql);
-    //int jdg=mysql_affected_rows(mysql);
-    if(res==NULL)
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg==0)
     {
         memset(result,0,sizeof(result));
         strcpy(result,"insert into account value(\"");//注意格式问题
@@ -212,15 +334,30 @@ void log_up(char *buf,int fd)
         strcat(result,"\",\"");
         strcat(result,answer->valuestring);
         strcat(result,"\");");
+        
         if(mysql_real_query(mysql,result,sizeof(result))!=0)
         {
             my_error("log_up query failed",__LINE__);
         }
         send(fd,"注册成功!",20,0);
+        create_table(name->valuestring);//开始建立每个人一张表
     }
     else 
         send(fd,"账号已存在!",20,0);
     mysql_free_result(res);
+}
+void create_table(char *name)//建立表格
+{
+	char result[500];
+	memset(result,0,sizeof(result));
+    strcpy(result,"create table ");
+    strcat(result,name);
+    strcat(result,"( name varchar(20) NULL , chat text NULL,status int NULL,friend int NULL,UNIQUE(name));");
+    //名字不能重复
+    if(mysql_real_query(mysql,result,sizeof(result))!=0)
+    {
+        my_error("create self table",__LINE__);
+    }
 }
 
 void find_passwd(char *buf,int fd)
@@ -246,7 +383,8 @@ void find_passwd(char *buf,int fd)
     }
     MYSQL_RES * res;
     res=mysql_store_result(mysql);
-    if(res==NULL)
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg==0)
         send(fd,"输入信息有误",20,0);
     else 
     {

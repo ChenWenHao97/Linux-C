@@ -36,11 +36,17 @@ void my_error(char *string,int line);
 void log_in_ui();
 void find_passwd(int client_fd);
 void log_after_ui();
+void log_after(char *name);
+void search_online_friend(char *name);//查找在线好友
+void add_friend(char *name);//添加好友
+void friend_ask(char *name);//好友请求
+void search_friend(char *name);//搜索好友
+void search_group(char *name);//搜索群
+int client_fd;//全局变量  
 int main()
 {
     struct sockaddr_in addr;
     memset(&addr,0,sizeof(addr));
-    int client_fd;
     char buf[400];
     memset(buf,0,sizeof(buf));
     addr.sin_family=AF_INET;
@@ -185,8 +191,8 @@ void log_in(int client_fd)
             exit(1);
         }
     }
-    log_after_ui();//登录之后的界面
-
+    //登录之后的界面
+    log_after(name);
 
 }
 
@@ -194,12 +200,81 @@ void log_after_ui()//登录之后的界面
 {
     system("clear");
     printf(START);
-    printf("1、查看在线好友\n");
-    printf("2、添加好友\n");
-    printf("3、查看好友请求\n");
-    printf("4、搜索好友\n");
-    printf("5、删除好友\n");
-    printf("6、查看所有群\n");
+    printf("\t\t\t\t1、查看在线好友\n");
+    printf("\t\t\t\t2、添加好友\n");
+    printf("\t\t\t\t3、查看好友请求\n");
+    printf("\t\t\t\t4、搜索好友\n");
+    printf("\t\t\t\t5、删除好友\n");
+    printf("\t\t\t\t6、查看所有群\n");
+    printf(START);
+}
+void log_after(char *name)
+{
+    int choice;
+    while(1)
+    {
+        log_after_ui();
+        printf("\t\t\t\t请输入你的选项:");
+        scanf("%d",&choice);
+        switch(choice)
+        {
+            case 1:
+                search_online_friend(name);
+                break;
+           /* case 2:
+                add_friend(name);
+                break;
+            case 3:
+                friend_ask(name);
+                break;
+            case 4:
+                search_friend(name);
+                break;
+            case 5:
+                search_group(name);
+                break;*/
+        }
+    }
+
+
+}
+void search_online_friend(char *name)
+{
+    cJSON *root=cJSON_CreateObject();
+    cJSON_AddStringToObject(root,"name",name);
+    cJSON_AddNumberToObject(root,"type",3);
+    char *out=cJSON_Print(root);
+    if(send(client_fd,out,strlen(out),0)<0)
+    {
+        my_error("send search_online",__LINE__);
+    }
+    char buf[500];
+    if(recv(client_fd,buf,sizeof(buf),0)<0)
+    {
+        my_error("recv search_online",__LINE__);
+    }
+    if(strcmp(buf,"没有好友在线")==0)
+       {
+            printf("\n\n\t\t\t\t%s!\n",buf);
+            sleep(3);
+       }
+    else
+    {
+        root=cJSON_Parse(buf);
+        cJSON * list=cJSON_GetObjectItem(root,"list");
+        int size=cJSON_GetArraySize(list);
+        cJSON *arr,*final;
+        for(int i=0;i<size;i++)
+        {
+            arr=cJSON_GetArrayItem(list,i);
+            final=cJSON_GetObjectItem(arr,"name");
+            printf("\n\t\t\t\t%d、姓名:%s  ",i+1,final->valuestring);
+            if((i+1)%3==0)
+                putchar('\n');
+        }
+        sleep(3);
+    }
+
 }
 
  void log_up(int client_fd)//注册
@@ -334,7 +409,6 @@ void log_after_ui()//登录之后的界面
             else 
             {
                 printf("\n                \t\t注册失败，请重新输入\n");
-                //system("clear");
                 sleep(2);
                 i=1;
             }
