@@ -277,10 +277,10 @@ int log_after_friend(char *name)
             break;
         case 4:
             search_allfriend(name);
-            break;/*
+            break;
         case 5:
             delete_friend(name);
-            break;*/
+            break;
         default:
             break;
     }
@@ -400,6 +400,7 @@ void friend_ask(char *name)
                 sleep(3);
                 break;
             }
+            fprintf(stderr,"%s",result);
             root=cJSON_Parse(result);
             list=cJSON_GetObjectItem(root,"list");
             size=cJSON_GetArraySize(list);
@@ -508,6 +509,29 @@ void search_allfriend(char *name)
         putchar('\n');
         sleep(3);
     }
+}
+void delete_friend(char *name)
+{
+    printf("\t\t\t\t请输入你要删除的好友");
+    char reduce[50];
+    fprintf(stderr,"\033[10C");
+    scanf(" %s",reduce);
+    cJSON *root=cJSON_CreateObject();
+    cJSON_AddStringToObject(root,"selfname",name);
+    cJSON_AddStringToObject(root,"reducename",reduce);
+    cJSON_AddNumberToObject(root,"type",7);
+    char *out=cJSON_Print(root);
+    printf("##out:%s",out);////
+    int ret=send(client_fd,out,strlen(out),0);
+   printf("##525 %d",ret);
+
+    char result[400];
+    if(recv(client_fd,result,sizeof(result),0)<0)
+    {
+        my_error("delte failed",__LINE__);
+    }
+    printf("####\t\t\t\t%s!",result);
+    sleep(2);
 }
 
  void log_up(int client_fd)//注册
