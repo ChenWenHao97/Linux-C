@@ -34,8 +34,9 @@ void change_status(char *name);//改变每个人在线状态
 void search_online_friend(char *buf,int fd);
 void add_friend(char *name,int fd);
 void friend_ask(char *name,int fd);
-void all_friend(char *name);/*
-void search_friend(char *name,int fd);
+void search_allfriend(char *name,int fd);
+void exit_out(char *name,int fd);
+/*
 void delete_friend(char*name ,int fd);
 void chat(char*name,int fd);
 void search_group(char *name,int fd);*/
@@ -156,16 +157,18 @@ void *thread(void )
                     break;
                case 5:
                     friend_ask(buf,events[i].data.fd);
-                    break;/*
-               case 6:
-                    search_friend(buf,events[i].data.fd);
                     break;
+               case 6:
+                    search_allfriend(buf,events[i].data.fd);
+                    break;/*
                case 7:
                     delete_friend(buf,events[i].data.fd);
                     break;
                case 8:
                     chat(buf,events[i].data.fd);*/
-            
+               case -1:
+                    exit_out(buf,events[i].data.fd);
+                    break;
             }
         }
     }
@@ -217,6 +220,12 @@ void change_status(char *name)//改变在线状态
             break;
         }
         find=find->next;
+    }
+    char result[400];
+    sprintf(result,"update account set status=1 where name=\"%s\";",name);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("change satus",__LINE__);
     }
 }
 void search_online_friend(char *buf,int fd)//查看在线好友
@@ -439,11 +448,38 @@ void friend_ask(char *buf,int fd)
         break;
     }
 }
-/*void search_friend(char *buf,int fd)
+void search_allfriend(char *buf,int fd)
 {
-
+    char result[400];
+    memset(result,0,sizeof(result));
+    cJSON *out=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(out,"name");
+    sprintf(result,"select name from %s ;",name->valuestring);
+    //printf("448:%s\n",result);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("search_allfriend failed",__LINE__);
+    }
+    MYSQL_RES *res=mysql_store_result(mysql);
+    MYSQL_ROW row;
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg==0)
+        send(fd,"您没有好友",20,0);
+    else 
+    {
+        cJSON *root=cJSON_CreateObject();
+        cJSON *rows;
+        cJSON_AddItemToObject(root,"list",rows=cJSON_CreateArray());
+        while(row=mysql_fetch_row(res))
+        {
+            cJSON_AddItemToObject(rows,"name",cJSON_CreateString(row[0]));
+        }
+        char *ask=cJSON_Print(root);
+        //printf("467:ask %s",ask);
+        send(fd,ask,strlen(ask),0);
+    }
 }
-
+/*
 void delete_friend(char *buf,int fd)
 {
 
@@ -575,7 +611,27 @@ void my_error(char *string,int line)
     perror(string);
     exit(1);
 }
-
+void exit_out(char *buf,int fd)
+{
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(root,"name");
+    char result[400];
+    sprintf(result,"update account set status=0 where name=\"%s\";",name->valuestring);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("exit ",__LINE__);
+    }
+    LINK_USER *find=head;
+    while(find!=NULL)
+    {
+        if(strcmp(find->name,name->valuestring)==0)
+        {
+            find->status=0;
+            break;
+        }
+        find=find->next;
+    }
+}
 void init_link()//链表初始化
 {
     char result[400];

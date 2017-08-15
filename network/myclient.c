@@ -41,7 +41,7 @@ int log_after_friend(char *name);
 void search_online_friend(char *name);//查找在线好友
 void add_friend(char *name);//添加好友
 void friend_ask(char *name);//好友请求
-void search_friend(char *name);//搜索好友
+void search_allfriend(char *name);//搜索好友
 void delete_friend(char *name);//删除好友
 void search_group(char *name);//搜索群
 int client_fd;//全局变量  
@@ -201,14 +201,17 @@ void log_after_ui(char *name)//登录之后的界面
 {
     while(1)
     {
+        int flag=0;
         system("clear");
         printf(START);
         printf("\t\t\t\t1、好友信息\n");
         printf("\t\t\t\t2、群信息\n");
         printf("\t\t\t\t3、传文件\n");
-        printf("\n\t\t\t\t请输入您的选项:\n");
+        printf("\t\t\t\t4、退出\n");
         printf(START);
+        printf("\n\t       请输入您的选项:\n");
         int choice;
+        fprintf(stderr,"\033[30C");
         scanf(" %d",&choice);
         switch(choice)
         {
@@ -220,7 +223,7 @@ void log_after_ui(char *name)//登录之后的界面
                     printf("\t\t\t\t1、查看在线好友\n");
                     printf("\t\t\t\t2、添加好友\n");
                     printf("\t\t\t\t3、查看好友请求\n");
-                    printf("\t\t\t\t4、搜索好友\n");
+                    printf("\t\t\t\t4、搜索全部好友\n");
                     printf("\t\t\t\t5、删除好友\n");
                     printf("\t\t\t\t6、私聊\n");
                     printf("\t\t\t\t7、返回上一级\n");
@@ -230,8 +233,30 @@ void log_after_ui(char *name)//登录之后的界面
                     if(flag==7)
                         break;
                 }
-               break;
-          // /case 2:
+               break;/*
+            case 2:
+                break;
+            case 3:
+                break;*/
+            case 4:
+            {
+                flag=1;
+                cJSON *root=cJSON_CreateObject();
+                cJSON_AddNumberToObject(root,"type",-1);
+                cJSON_AddStringToObject(root,"name",name);
+                char *out=cJSON_Print(root);
+                send(client_fd,out,strlen(out),0);
+            }
+                break;
+            
+        }
+        if(flag)
+        {
+            system("clear");
+            printf(START);
+            printf("\n\n               \t\t\t\t欢迎下次使用!\n\n");
+            printf(START);
+            exit(0);
         }
     }
 }
@@ -249,10 +274,10 @@ int log_after_friend(char *name)
             break;
         case 3:
             friend_ask(name);
-            break;/*
-        case 4:
-            search_friend(name);
             break;
+        case 4:
+            search_allfriend(name);
+            break;/*
         case 5:
             delete_friend(name);
             break;*/
@@ -293,13 +318,11 @@ void search_online_friend(char *name)
             arr=cJSON_GetArrayItem(list,i);
             final=cJSON_GetObjectItem(arr,"name");
             printf("\n\t\t%d、姓名:%s\n",i+1,final->valuestring);
-
         }
         fflush(stdout);
         putchar('\n');
         sleep(3);
     }
-
 }
 
 void add_friend(char *name)
@@ -373,7 +396,7 @@ void friend_ask(char *name)
             }
             if(strcmp(result,"您没有发送好友请求")==0)
             {
-                printf("\t\t\t\t%s");
+                printf("\t\t\t\t%s",result);
                 sleep(3);
                 break;
             }
@@ -454,6 +477,36 @@ void friend_ask(char *name)
             }
             break;
         }
+    }
+}
+void search_allfriend(char *name)
+{
+    char result[400];
+    cJSON * sendout=cJSON_CreateObject();
+    cJSON_AddStringToObject(sendout,"name",name);
+    cJSON_AddNumberToObject(sendout,"type",6);
+    char * sendtosever=cJSON_Print(sendout);
+    send(client_fd,sendtosever,strlen(sendtosever),0);
+    memset(result,0,sizeof(result));
+    if(recv(client_fd,result,sizeof(result),0)<0)
+    {
+        my_error("search_allfriend",__LINE__);
+    }
+    if(strcmp(result,"您没有好友")==0)
+        printf("\n\t\t\t\t%s",result);
+    else
+    {
+        cJSON *root=cJSON_Parse(result);
+        cJSON *list=cJSON_GetObjectItem(root,"list");
+        cJSON * arr; 
+        int   size=cJSON_GetArraySize(list);
+        for(int i=0;i<size;i++)
+        {
+            arr=cJSON_GetArrayItem(list,i);
+            printf("\t\t\t\t%d、姓名:%s\n",i+1,arr->valuestring);
+        }
+        putchar('\n');
+        sleep(3);
     }
 }
 
