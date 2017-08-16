@@ -43,6 +43,7 @@ void search_group(char *name,int fd);*/
 typedef struct LINK_USER {
     char name[20];
     int status;
+    int fd;
     struct LINK_USER *next;
 } LINK_USER;
 LINK_USER *head=NULL,*p,*q;
@@ -230,7 +231,7 @@ void change_status(char *name)//改变在线状态
     }
     char result[400];
     sprintf(result,"update account set status=1 where name=\"%s\";",name);
-    printf("233 %s",result);
+   // printf("233 %s",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
         my_error("change satus",__LINE__);
@@ -388,24 +389,27 @@ void friend_ask(char *buf,int fd)
             break;
         case 2:  
             sprintf(result,"select from_name from friend_ask where to_name=\"%s\";",name->valuestring);
-            printf("388 %s\n",result);/////
+           // printf("388 %s\n",result);/////
             if(mysql_real_query(mysql,result,strlen(result))!=0)
             {
                 my_error("case 2 recv",__LINE__);
             }
             res=mysql_store_result(mysql); 
-            mysql_free_result(res);     
             root=cJSON_CreateObject();
             cJSON_AddItemToObject(root,"list",rows=cJSON_CreateArray());
             jdg=mysql_affected_rows(mysql);
-           // printf("401 jdg %d\n",jdg);
+           // printf("402 jdg %d\n",jdg);/////
             if(jdg!=0)
             {
-                while(clo=mysql_fetch_row(res))
+              //  printf("405  \n");
+                MYSQL_ROW clo1;
+                while(clo1=mysql_fetch_row(res))
                 {
-                    cJSON_AddItemToObject(rows,"name",cJSON_CreateString(clo[0]));
+                    cJSON_AddItemToObject(rows,"name",cJSON_CreateString(clo1[0]));
                 }
+                mysql_free_result(res);     
                 char *ask=cJSON_Print(root);
+                //printf("410 %s\n",ask);/////
                 send(fd,ask,strlen(ask),0);
                 memset(result,0,sizeof(result));
                 if(recv(fd,result,sizeof(result),0)<0)
@@ -421,7 +425,7 @@ void friend_ask(char *buf,int fd)
                     cJSON *selfname=cJSON_GetObjectItem(out,"name");
                     memset(result,0,sizeof(result));
                     sprintf(result,"insert into %s values(\"%s\",NULL,0,1,0);",selfname->valuestring,agree->valuestring);//更改接受者状态
-                    fprintf(stderr, "%s",result);
+                    fprintf(stderr, "%s",result);////
                     if(mysql_real_query(mysql,result,strlen(result))!=0)
                     {
                         my_error("change recver",__LINE__);
@@ -440,7 +444,7 @@ void friend_ask(char *buf,int fd)
                     strcpy(result,"delete from friend_ask where from_name=\"");
                     strcat(result,agree->valuestring);
                     strcat(result,"\";");
-
+                    printf("445 %s",result);
                     if(mysql_real_query(mysql,result,strlen(result))!=0)
                     {
                         my_error("delet agree",__LINE__);
@@ -450,12 +454,15 @@ void friend_ask(char *buf,int fd)
                 }
             }
             else 
-                send(fd,"您没有收到好友请求",20,0);
+               {
+                    send(fd,"您没有收到好友请求",20,0);
+                    mysql_free_result(res);     
+               }
             break;
         }
     
 }
-void search_allfriend(char *buf,int fd)
+void search_allfriend(char *buf,int fd)//显示所有好友
 {
     char result[400];
     memset(result,0,sizeof(result));
@@ -486,7 +493,7 @@ void search_allfriend(char *buf,int fd)
     mysql_free_result(res);
 }
 
-void delete_friend(char *buf,int fd)
+void delete_friend(char *buf,int fd)//删好友
 {
     cJSON *root=cJSON_Parse(buf);
     cJSON *selfname=cJSON_GetObjectItem(root,"selfname");
@@ -528,7 +535,7 @@ void delete_friend(char *buf,int fd)
         send(fd,"删除成功",20,0);
     }
 }
-void read_message(char *buf,int fd)
+void read_message(char *buf,int fd)//未读消息
 {
     cJSON *root=cJSON_Parse(buf);
     cJSON *fromname=cJSON_GetObjectItem(root,"fromname");
@@ -580,9 +587,9 @@ void read_message(char *buf,int fd)
 /*void chat(char *buf,int fd)
 {
 
-}
+}*/
 
-*/
+
 
 void log_up(char *buf,int fd)
 {

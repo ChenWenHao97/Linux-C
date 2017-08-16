@@ -224,7 +224,7 @@ void log_after_ui(char *name)//登录之后的界面
                     printf("\t\t\t\t1、查看在线好友\n");
                     printf("\t\t\t\t2、添加好友\n");
                     printf("\t\t\t\t3、查看好友请求\n");
-                    printf("\t\t\t\t4、搜索全部好友\n");
+                    printf("\t\t\t\t4、显示全部好友\n");
                     printf("\t\t\t\t5、删除好友\n");
                     printf("\t\t\t\t6、私聊\n");
                     printf("\t\t\t\t7、返回上一级\n");
@@ -287,6 +287,7 @@ int log_after_friend(char *name)
             break;
         //case 6:
           //  chat(name);
+            break;
         default:
             break;
     }
@@ -439,12 +440,14 @@ void friend_ask(char *name)
             cJSON_AddNumberToObject(root,"casenum",2);
             cJSON_AddNumberToObject(root,"type",5);
             out=cJSON_Print(root);
+            printf("443 %s",out);
             send(client_fd,out,strlen(out),0);
             memset(result,0,sizeof(result));
             if(recv(client_fd,result,sizeof(result),0)<0)
             {
                 my_error("recv case 1",__LINE__);
             }
+            printf("450 %s\n",result);////
             root=cJSON_Parse(result);
             list=cJSON_GetObjectItem(root,"list");
             size=cJSON_GetArraySize(list);
@@ -481,7 +484,7 @@ void friend_ask(char *name)
                         break;
                     }
                     char *out=cJSON_Print(root1);
-                    printf("添加好友成功!");
+                    printf("\t\t\t\t添加好友成功!");
                     send(client_fd,out,strlen(out),0);
                 }
             }
@@ -596,10 +599,12 @@ void read_message(char *name)
     char result[400];
     scanf(" %s",result);
     cJSON *root=cJSON_CreateObject();
-    cJSON *name=
+    cJSON_AddStringToObject(root,"toname",result);
+    cJSON_AddStringToObject(root,"fromname",name);
 
-}*/
 
+}
+*/
  void log_up(int client_fd)//注册
  {
     char passwd1[20],passwd2[20],name[100];
