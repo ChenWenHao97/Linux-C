@@ -36,7 +36,8 @@ void add_friend(char *name,int fd);
 void friend_ask(char *name,int fd);
 void search_allfriend(char *name,int fd);
 void exit_out(char *name,int fd);
-void delete_friend(char*name ,int fd);/*
+void delete_friend(char*name ,int fd);
+void read_message(char *name,int fd);/*
 void chat(char*name,int fd);
 void search_group(char *name,int fd);*/
 typedef struct LINK_USER {
@@ -133,6 +134,7 @@ void *thread(void )
                 epoll_ctl(epoll_fd,EPOLL_CTL_DEL,events[i].data.fd,&event);
                 continue;
             }
+
             cJSON *root;
             root=cJSON_Parse(buf);
             cJSON * type=cJSON_GetObjectItem(root,"type");
@@ -162,11 +164,16 @@ void *thread(void )
                     break;
                case 7:
                     delete_friend(buf,events[i].data.fd);
-                    break;/*
-               case 8:
-                    chat(buf,events[i].data.fd);*/
+                    break;
+              // case 8:
+                //    chat(buf,events[i].data.fd);
+               case 9:
+                    read_message(buf,events[i].data.fd);
+                    break;
                case -1:
                     exit_out(buf,events[i].data.fd);
+                    break;
+               default:
                     break;
             }
         }
@@ -209,6 +216,7 @@ void log_in(char *buf,int fd)
 }
 void change_status(char *name)//改变在线状态
 {
+    //printf("219 改变在线状态\n");
     LINK_USER * find;
     find=head;
     while(find!=NULL)
@@ -222,10 +230,14 @@ void change_status(char *name)//改变在线状态
     }
     char result[400];
     sprintf(result,"update account set status=1 where name=\"%s\";",name);
+    printf("233 %s",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
         my_error("change satus",__LINE__);
     }
+    MYSQL_RES *res=mysql_store_result(mysql);
+    mysql_free_result(res);
+    //printf("237 改变成功");
 }
 void search_online_friend(char *buf,int fd)//查看在线好友
 {
@@ -318,11 +330,6 @@ void add_friend(char *buf,int fd)
     free(find);
     if(flag)
     {
-       /* sprintf(result,"insert into %s values(\"%s\",NULL,0,0);",fromname->valuestring,toname->valuestring);
-        if(mysql_real_query(mysql,result,strlen(result))!=0)
-        {
-                my_error("add_friend failed",__LINE__);
-        }*/
         memset(result,0,sizeof(result));
         strcpy(result,"insert friend_ask values(\"");//记录请求
         strcat(result,fromname->valuestring);
@@ -354,96 +361,98 @@ void friend_ask(char *buf,int fd)
 
     switch(casenum->valueint)
     {
-    case 1:
-        sprintf(result,"select to_name from friend_ask where from_name=\"%s\";",name->valuestring);
+        case 1:
+            sprintf(result,"select to_name from friend_ask where from_name=\"%s\";",name->valuestring);
 
-        if(mysql_real_query(mysql,result,strlen(result))!=0)
-        {
-            my_error("case 1 query",__LINE__);
-        }
-        res=mysql_store_result(mysql);
+            if(mysql_real_query(mysql,result,strlen(result))!=0)
+            {
+                my_error("case 1 query",__LINE__);
+            }
+            res=mysql_store_result(mysql);
 
-        jdg=mysql_affected_rows(mysql);
-        if(jdg!=0)
-        {
+            jdg=mysql_affected_rows(mysql);
+            if(jdg!=0)
+            {
+                root=cJSON_CreateObject();
+                cJSON_AddItemToObject(root,"list",rows=cJSON_CreateArray());
+                while(clo=mysql_fetch_row(res))
+                {
+                    cJSON_AddItemToObject(rows,"name",cJSON_CreateString(clo[0]));
+                }
+                char *ask=cJSON_Print(root);
+                send(fd,ask,strlen(ask),0);
+            }
+            else 
+                send(fd,"您没有发送好友请求",40,0);
+            mysql_free_result(res);
+            break;
+        case 2:  
+            sprintf(result,"select from_name from friend_ask where to_name=\"%s\";",name->valuestring);
+            printf("388 %s\n",result);/////
+            if(mysql_real_query(mysql,result,strlen(result))!=0)
+            {
+                my_error("case 2 recv",__LINE__);
+            }
+            res=mysql_store_result(mysql); 
+            mysql_free_result(res);     
             root=cJSON_CreateObject();
             cJSON_AddItemToObject(root,"list",rows=cJSON_CreateArray());
-            while(clo=mysql_fetch_row(res))
+            jdg=mysql_affected_rows(mysql);
+           // printf("401 jdg %d\n",jdg);
+            if(jdg!=0)
             {
-                cJSON_AddItemToObject(rows,"name",cJSON_CreateString(clo[0]));
-            }
-            char *ask=cJSON_Print(root);
-            send(fd,ask,strlen(ask),0);
-        }
-        else 
-            send(fd,"您没有发送好友请求",40,0);
-        mysql_free_result(res);
-        break;
-    case 2:  
-        sprintf(result,"select from_name from friend_ask where to_name=\"%s\";",name->valuestring);
-        if(mysql_real_query(mysql,result,strlen(result))!=0)
-        {
-            my_error("case 2 recv",__LINE__);
-        }
-        
-        res=mysql_store_result(mysql);      
-        root=cJSON_CreateObject();
-        cJSON_AddItemToObject(root,"list",rows=cJSON_CreateArray());
-
-        //cJSON_AddItemToArray(rows,row=cJSON_CreateObject());
-        jdg=mysql_affected_rows(mysql);
-    
-        if(jdg!=0)
-        {
-            while(clo=mysql_fetch_row(res))
-            {
-                cJSON_AddItemToObject(rows,"name",cJSON_CreateString(clo[0]));
-            }
-            char *ask=cJSON_Print(root);
-            send(fd,ask,strlen(ask),0);
-            memset(result,0,sizeof(result));
-            if(recv(fd,result,sizeof(result),0)<0)
-            {
-                my_error("recv case 2",__LINE__);
-            }
-          //  printf("ser396###%s \n",result);
-            //printf("398 %s",name->valuestring);
-            if(strcmp(result,"quit")==0)
-                break;
-            else 
-            {
-                cJSON *out=cJSON_Parse(result);
-                cJSON *agree=cJSON_GetObjectItem(out,"agree");
-                cJSON *selfname=cJSON_GetObjectItem(out,"name");
+                while(clo=mysql_fetch_row(res))
+                {
+                    cJSON_AddItemToObject(rows,"name",cJSON_CreateString(clo[0]));
+                }
+                char *ask=cJSON_Print(root);
+                send(fd,ask,strlen(ask),0);
                 memset(result,0,sizeof(result));
-                sprintf(result,"insert into %s values(\"%s\",NULL,0,1);",selfname->valuestring,agree->valuestring);//更改接受者状态
-                fprintf(stderr, "%s",result);
-                if(mysql_real_query(mysql,result,strlen(result))!=0)
+                if(recv(fd,result,sizeof(result),0)<0)
                 {
-                    my_error("change recver",__LINE__);
+                    my_error("recv case 2",__LINE__);
                 }
-                memset(result,0,sizeof(result));//更改发送者状态
-                sprintf(result,"insert into %s values(\"%s\",NULL,0,1);",agree->valuestring,name->valuestring);
-                if(mysql_real_query(mysql,result,strlen(result))!=0)
+                if(strcmp(result,"quit")==0)
+                    break;
+                else 
                 {
-                    my_error("change sender",__LINE__);
-                }
-                memset(result,0,sizeof(result));//删除记录
-                strcpy(result,"delete from friend_ask where from_name=\"");
-                strcat(result,agree->valuestring);
-                strcat(result,"\";");
+                    cJSON *out=cJSON_Parse(result);
+                    cJSON *agree=cJSON_GetObjectItem(out,"agree");
+                    cJSON *selfname=cJSON_GetObjectItem(out,"name");
+                    memset(result,0,sizeof(result));
+                    sprintf(result,"insert into %s values(\"%s\",NULL,0,1,0);",selfname->valuestring,agree->valuestring);//更改接受者状态
+                    fprintf(stderr, "%s",result);
+                    if(mysql_real_query(mysql,result,strlen(result))!=0)
+                    {
+                        my_error("change recver",__LINE__);
+                    }
+                    res=mysql_store_result(mysql);
+                    mysql_free_result(res);
+                    memset(result,0,sizeof(result));//更改发送者状态
+                    sprintf(result,"insert into %s values(\"%s\",NULL,0,1,0);",agree->valuestring,name->valuestring);
+                    if(mysql_real_query(mysql,result,strlen(result))!=0)
+                    {
+                        my_error("change sender",__LINE__);
+                    }
+                    res=mysql_store_result(mysql);
+                    mysql_free_result(res);
+                    memset(result,0,sizeof(result));//删除记录
+                    strcpy(result,"delete from friend_ask where from_name=\"");
+                    strcat(result,agree->valuestring);
+                    strcat(result,"\";");
 
-                if(mysql_real_query(mysql,result,strlen(result))!=0)
-                {
-                    my_error("delet agree",__LINE__);
+                    if(mysql_real_query(mysql,result,strlen(result))!=0)
+                    {
+                        my_error("delet agree",__LINE__);
+                    }
+                    res=mysql_store_result(mysql);
+                    mysql_free_result(res);
                 }
-                mysql_free_result(res);
             }
+            else 
+                send(fd,"您没有收到好友请求",20,0);
+            break;
         }
-        else 
-            send(fd,"您没有收到好友请求",20,0);
-        break;
-    }
     
 }
 void search_allfriend(char *buf,int fd)
@@ -519,16 +528,61 @@ void delete_friend(char *buf,int fd)
         send(fd,"删除成功",20,0);
     }
 }
+void read_message(char *buf,int fd)
+{
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *fromname=cJSON_GetObjectItem(root,"fromname");
+    char result[400];
+    memset(result,0,sizeof(result));
+    sprintf(result,"select * from %s where message=1",fromname->valuestring);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("read_message",__LINE__);
+    }
+    MYSQL_RES *res=mysql_store_result(mysql);
+    int jdg=mysql_affected_rows(mysql);
+    //printf("jdg532 %d\n",jdg);
+    if(jdg!=0)
+    {
+        /*
+         if(jdg!=0)
+        {
+            root=cJSON_CreateObject();
+            cJSON_AddItemToObject(root,"list",rows=cJSON_CreateArray());
+            while(clo=mysql_fetch_row(res))
+            {
+                cJSON_AddItemToObject(rows,"name",cJSON_CreateString(clo[0]));
+            }
+            char *ask=cJSON_Print(root);
+            send(fd,ask,strlen(ask),0);
+        }
+        */
+        MYSQL_ROW row,* rows;
+        cJSON *out=cJSON_CreateObject();
+        cJSON_AddItemToObject(out,"list",rows=cJSON_CreateArray());
+        while(row=mysql_fetch_row(res))
+        {
+            cJSON_AddItemToObject(rows,"name",cJSON_CreateString(row[0]));
+        }
+        char * sendout=cJSON_Print(out);
+        printf("%s542 \n",sendout);
+        send(fd,sendout,strlen(sendout),0);
+        mysql_free_result(res);
+    }
+    else 
+    {
+        send(fd,"没有消息",20,0);
+        //printf("发送\n");
+    }
+}
+   
 
 /*void chat(char *buf,int fd)
 {
 
 }
-void all_friend(char *name)
-{
-    char result[400];
 
-}*/
+*/
 
 void log_up(char *buf,int fd)
 {
@@ -562,14 +616,6 @@ void log_up(char *buf,int fd)
         {
             my_error("log_up query failed",__LINE__);
         }
-        /*memset(result,0,sizeof(result));
-        strcpy(result,"insert into all_online values(\"");
-        strcat(result,name->valuestring);
-        strcat(result,"\",0);");
-        if(mysql_real_query(mysql,result,sizeof(result))!=0)
-        {
-            my_error("write all_online",__LINE__);
-        }*/
         send(fd,"注册成功!",20,0);
         create_table(name->valuestring);//开始建立每个人一张表
     }
@@ -583,8 +629,9 @@ void create_table(char *name)//建立表格
 	memset(result,0,sizeof(result));
     strcpy(result,"create table ");
     strcat(result,name);
-    strcat(result,"( name varchar(20) NULL , chat text NULL,status int NULL,friend int NULL,UNIQUE(name));");
+    strcat(result,"( name varchar(20) NULL , chat text NULL,status int NULL,friend int NULL,message int NULL,UNIQUE(name));");
     //名字不能重复
+    //printf("597%s\n",result);
     if(mysql_real_query(mysql,result,sizeof(result))!=0)
     {
         my_error("create self table",__LINE__);
@@ -601,13 +648,15 @@ void find_passwd(char *buf,int fd)
     char result[400];
 
     memset(result,0,sizeof(buf));
-    strcpy(result,"select * from account where name=\"");
+    sprintf(result,"select * from account where name=\"%s\",and question=\"%s\",and answer=\"%s\";",
+    name->valuestring,question->valuestring,answer->valuestring);
+    /*strcpy(result,"select * from account where name=\"");
     strcat(result,name->valuestring);
     strcat(result,"\"and question=\"");
     strcat(result,question->valuestring);
-    strcat(result,"\"and answer=\"");strcpy(result,"select name from ");
+    strcat(result,"\"and answer=\"");/*strcpy(result,"select name from ");
     strcat(result,name->valuestring);
-    strcat(result,"where friend=0;");
+    strcat(result,"where friend=0;");*/
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
         my_error("case 1 recv",__LINE__);

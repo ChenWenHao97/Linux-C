@@ -17,6 +17,7 @@
 #include<sys/socket.h>
 #include<arpa/inet.h>
 #include<cJSON.h>
+#include<pthread.h>
 
 #define mouth 4507
 //向上移动光标 cursor_up(3); 代表向上移动3.
@@ -43,7 +44,9 @@ void add_friend(char *name);//添加好友
 void friend_ask(char *name);//好友请求
 void search_allfriend(char *name);//搜索好友
 void delete_friend(char *name);//删除好友
+void chat(char *name);//私聊
 void search_group(char *name);//搜索群
+void read_message(char *name);
 int client_fd;//全局变量  
 int main()
 {
@@ -72,8 +75,7 @@ int main()
         memset(buf,0,sizeof(buf));
         fprintf(stderr,"\033[20C");
         printf("\t\t请输入你的选项:");
-        scanf("%d%*c",&choice);
-        //system("clear");
+        scanf(" %d%*c",&choice);
         log_in_ui();
         switch(choice)
         {
@@ -91,7 +93,6 @@ int main()
     close(client_fd);
     printf("thanks for using!\n");
     return 0;
-    
 }
 
 
@@ -228,12 +229,15 @@ void log_after_ui(char *name)//登录之后的界面
                     printf("\t\t\t\t6、私聊\n");
                     printf("\t\t\t\t7、返回上一级\n");
                     printf(START);
-                    printf("\t\t\t\t请输入你的选项:");
+                    read_message(name);
+                    //未读消息
+                    printf("\n\n\t\t\t\t请输入你的选项:");
                     int flag=log_after_friend(name);
                     if(flag==7)
                         break;
                 }
-               break;/*
+               break;
+               /*
             case 2:
                 break;
             case 3:
@@ -248,7 +252,6 @@ void log_after_ui(char *name)//登录之后的界面
                 send(client_fd,out,strlen(out),0);
             }
                 break;
-            
         }
         if(flag)
         {
@@ -260,6 +263,7 @@ void log_after_ui(char *name)//登录之后的界面
         }
     }
 }
+
 int log_after_friend(char *name)
 {
     int choice;
@@ -281,12 +285,15 @@ int log_after_friend(char *name)
         case 5:
             delete_friend(name);
             break;
+        //case 6:
+          //  chat(name);
         default:
             break;
     }
     return choice;
 
 }
+
 void search_online_friend(char *name)
 {
     cJSON *root=cJSON_CreateObject();
@@ -347,16 +354,20 @@ void add_friend(char *name)
         if(strcmp(toname,"发送成功")==0)
         {
             printf("\t\t\t\t%s\n!",toname);
-            sleep(3);
-            break;
+            printf("\n\t\t是否返回上一级(yes/no):");
+            char yes[20];
+            scanf(" %s",yes);
+            if(strcmp(yes,"yes")==0)
+                break;
         }
         else 
-            {
-                printf("\t\t\t\t%s,请重新输入!\n",toname);
-                sleep(3);
-            }
+        {
+            printf("\t\t\t\t%s,请重新输入!\n",toname);
+            sleep(2);
+        }
     }
 }
+
 void friend_ask(char *name)
 {
 
@@ -411,14 +422,12 @@ void friend_ask(char *name)
                 for(int i=0;i<size;i++)
                 {
                     arr=cJSON_GetArrayItem(list,i);
-                    //final=cJSON_GetObjectItem(arr,"name");
                     printf("\t\t\t\t%d、%s ",i+1,arr->valuestring);
                     if((i+1)%3==0)
                         putchar('\n');
                 }
                 fflush(stdout);
-                sleep(5);
-                printf("\t\t\n是否返回上一级\n(yes/no):");
+                printf("\n\t\t\t\t是否返回上一级(yes/no):");
                 char yes[20];
                 scanf(" %s",yes);
                 getchar();
@@ -456,12 +465,12 @@ void friend_ask(char *name)
                 }
                 fflush(stdout);
                 putchar('\n');
-                sleep(5);
                 while(1)
                 {
                     char agree[20];
                     memset(agree,0,sizeof(agree));
                     printf("\n\n\t\t请输入您想添加好友的名字(返回上一层请输入quit):\n");
+                    fprintf(stderr,"\033[30C");
                     scanf(" %s",agree);
                     cJSON *root1=cJSON_CreateObject();
                     cJSON_AddStringToObject(root1,"name",name);
@@ -480,6 +489,7 @@ void friend_ask(char *name)
         }
     }
 }
+
 void search_allfriend(char *name)
 {
     char result[400];
@@ -493,46 +503,102 @@ void search_allfriend(char *name)
     {
         my_error("search_allfriend",__LINE__);
     }
-    if(strcmp(result,"您没有好友")==0)
-        printf("\n\t\t\t\t%s",result);
-    else
+    while(1)
     {
-        cJSON *root=cJSON_Parse(result);
-        cJSON *list=cJSON_GetObjectItem(root,"list");
-        cJSON * arr; 
-        int   size=cJSON_GetArraySize(list);
+        system("clear");
+        if(strcmp(result,"您没有好友")==0)
+            printf("\n\t\t\t\t%s",result);
+        else
+        {
+            cJSON *root=cJSON_Parse(result);
+            cJSON *list=cJSON_GetObjectItem(root,"list");
+            cJSON * arr; 
+            int   size=cJSON_GetArraySize(list);
+            for(int i=0;i<size;i++)
+            {
+                arr=cJSON_GetArrayItem(list,i);
+                printf("\t\t\t\t%d、姓名:%s\n",i+1,arr->valuestring);
+            }
+            putchar('\n');
+        }
+        printf("\n\t\t\t\t是否返回上一层:(yes/no):");
+        char yes[20];
+        scanf(" %s",yes);
+        if(strcmp(yes,"yes")==0)
+            break;
+    }
+}
+
+void delete_friend(char *name)
+{
+    while(1)
+    {
+        printf("\t\t\t\t请输入你要删除的好友");
+        char reduce[50];
+        fprintf(stderr,"\033[10C");
+        scanf(" %s",reduce);
+        cJSON *root=cJSON_CreateObject();
+        cJSON_AddStringToObject(root,"selfname",name);
+        cJSON_AddStringToObject(root,"reducename",reduce);
+        cJSON_AddNumberToObject(root,"type",7);
+        char *out=cJSON_Print(root);
+        send(client_fd,out,strlen(out),0);
+
+        char result[400];
+        if(recv(client_fd,result,sizeof(result),0)<0)
+        {
+            my_error("delte failed",__LINE__);
+        }
+        printf("\t\t\t\t%s!\n",result);
+        printf("\n\n\t\t是否返回上一级\n(yes/no):");
+        char yes[20];
+        scanf(" %s",yes);
+        getchar();
+        if(strcmp(yes,"yes")==0)
+            break;
+    }
+    
+}
+void read_message(char *name)
+{
+    //printf("进入\n");
+    cJSON *root=cJSON_CreateObject();
+    cJSON_AddStringToObject(root,"fromname",name);
+    cJSON_AddNumberToObject(root,"type",9);
+    char *out=cJSON_Print(root);
+    send(client_fd,out,strlen(out),0);
+    char result[400];
+    memset(result,0,sizeof(result));
+    if(recv(client_fd,result,sizeof(result),0)<0)
+    {
+        my_error("read_message",__LINE__);
+    }
+    if(strcmp(result,"没有消息")==0)
+        printf("\t\t您没有好友消息\n");
+    else 
+    {
+        cJSON * recvin=cJSON_Parse(result);
+        cJSON *list=cJSON_GetObjectItem(recvin,"list");
+        cJSON *arr;
+        int size=cJSON_GetArraySize(list);
+        printf("你收到以下好友消息:\n");
         for(int i=0;i<size;i++)
         {
             arr=cJSON_GetArrayItem(list,i);
-            printf("\t\t\t\t%d、姓名:%s\n",i+1,arr->valuestring);
+            printf("\t\t\t%d、姓名%s\n",i+1,arr->valuestring);
         }
-        putchar('\n');
-        sleep(3);
     }
-}
-void delete_friend(char *name)
-{
-    printf("\t\t\t\t请输入你要删除的好友");
-    char reduce[50];
-    fprintf(stderr,"\033[10C");
-    scanf(" %s",reduce);
-    cJSON *root=cJSON_CreateObject();
-    cJSON_AddStringToObject(root,"selfname",name);
-    cJSON_AddStringToObject(root,"reducename",reduce);
-    cJSON_AddNumberToObject(root,"type",7);
-    char *out=cJSON_Print(root);
-    printf("##out:%s",out);////
-    int ret=send(client_fd,out,strlen(out),0);
-   printf("##525 %d",ret);
 
-    char result[400];
-    if(recv(client_fd,result,sizeof(result),0)<0)
-    {
-        my_error("delte failed",__LINE__);
-    }
-    printf("####\t\t\t\t%s!",result);
-    sleep(2);
 }
+/*void chat(char *name)
+{
+    printf("请输入您要发送信息的好友:");
+    char result[400];
+    scanf(" %s",result);
+    cJSON *root=cJSON_CreateObject();
+    cJSON *name=
+
+}*/
 
  void log_up(int client_fd)//注册
  {
@@ -672,7 +738,6 @@ void delete_friend(char *name)
     }
 }
 
-
 int getch()//getch实现
 {
     int c=0;
@@ -691,6 +756,7 @@ int getch()//getch实现
     assert(res==0);
     return c;
 }
+
 void find_passwd(int client_fd)//找回密码
 {
     char name[20];
@@ -799,6 +865,7 @@ void find_passwd(int client_fd)//找回密码
         }
     }
 }
+
 void my_error(char *string,int line)
 {
     fprintf(stderr,"line:%d ",line);
