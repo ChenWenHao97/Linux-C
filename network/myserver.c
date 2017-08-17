@@ -23,7 +23,7 @@
 #define USER "root"
 #define PASSWD "173874"
 #define DB "TESTDB"
-#define mouth 45077
+#define mouth 4507
 void my_error(char *string,int line);
 int epoll_fd;
 void *thread(void);
@@ -42,15 +42,18 @@ void read_message(char *buf,int fd);
 void search_chat(char *buf,int fd);
 void chat_withfiend(char *buf,int fd);
 char * get_time(void);
-void chat(char *buf,int fd);/*
-void search_group(char *name,int fd);*/
+void chat(char *buf,int fd);
+void create_group(char *buf,int fd);
+void dissolve_group(char *buf,int fd);
+void manage_group(char *buf,int fd);
+void group_ask(char *buf,int fd);
 typedef struct LINK_USER {
     char name[20];
     int status;
     int fd;
     struct LINK_USER *next;
 } LINK_USER;
-#undef result
+// #un
 LINK_USER *head=NULL,*p,*q;
 MYSQL *mysql;
 void init_link();
@@ -176,6 +179,18 @@ void *thread(void )
                     break;
                case 9:
                     read_message(buf,events[i].data.fd);
+                    break;
+               case 10:
+                    create_group(buf,events[i].data.fd);
+                    break;
+               case 11:
+                    dissolve_group(buf,events[i].data.fd);
+                    break;
+               case 12:
+                    manage_group(buf,events[i].data.fd);
+                    break;
+               case 13:
+                    group_ask(buf,events[i].data.fd);
                     break;
                case -1:
                     exit_out(buf,events[i].data.fd);
@@ -557,7 +572,6 @@ void read_message(char *buf,int fd)//未读消息
     int jdg=mysql_affected_rows(mysql);
     if(jdg!=0)
     {
-       
         MYSQL_ROW row,* rows;
         cJSON *out=cJSON_CreateObject();
         cJSON_AddItemToObject(out,"list",rows=cJSON_CreateArray());
@@ -573,11 +587,9 @@ void read_message(char *buf,int fd)//未读消息
     else 
     {
         send(fd,"没有消息",20,0);
-        //printf("发送\n");
     }
 }
    
-
 void chat(char *buf,int fd)
 {
 
@@ -608,7 +620,6 @@ void search_chat(char *buf,int fd)
     sprintf(result,"select * from chat where (fromname=\"%s\" and toname=\"%s\") or " \
             "(fromname=\"%s\" and toname=\"%s\");",fromname->valuestring,toname->valuestring,
             toname->valuestring,fromname->valuestring);
-    printf("611 %s\n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
         my_error("search chat result",__LINE__);
@@ -651,105 +662,28 @@ void search_chat(char *buf,int fd)
 void chat_withfriend(char *buf,int fd)
 {
     char result[100000];
-    /*int flag=1;
-    while(1)//只有采用这样的循环才可以避免客户端和服务器发的消息不对应
-    {    /*
-        send  这里recv就是buf,所以每次客户端循环都发送了，但是第二次接受需要忽略，因为每次send所有信息都有，
-        第一次只是为了能进入case语句，第二次就没有需要的信息了
-        如果第二次不recv，第一次send过来的内容还在缓冲区，所以每次recv都会得到上次内容
-        recv send
-        send recv
-        
-        if(flag)
-        {
-            flag=0;
-        }
-        else
-        {
-            memset(result,0,sizeof(result));
-            recv(fd,result,sizeof(result),0);
-        }*/
     cJSON *root=cJSON_Parse(buf);
     cJSON *fromname=cJSON_GetObjectItem(root,"fromname");
     cJSON *toname=cJSON_GetObjectItem(root,"toname");
     cJSON *chat=cJSON_GetObjectItem(root,"chat");
-/*
-    memset(result,0,sizeof(result));
-    sprintf(result,"select * from chat where (fromname=\"%s\" and toname=\"%s\") or " \
-                   "(fromname=\"%s\" and toname=\"%s\");",fromname->valuestring,
-                   toname->valuestring,toname->valuestring,fromname->valuestring);
-
-    printf("611 %s\n",result);
-    if(mysql_real_query(mysql,result,strlen(result))!=0)
-    {
-        my_error("search chat result",__LINE__);
-    }
-    MYSQL_RES *res=mysql_store_result(mysql);
-    MYSQL_ROW row,*rows,clo;
-    int jdg=mysql_affected_rows(mysql);
-    if(jdg!=0)
-    {
-        cJSON *chat_res = cJSON_CreateObject();
-        cJSON *chatarr;
-        cJSON_AddItemToObject(chat_res, "list", chatarr = cJSON_CreateArray());
-        while (clo = mysql_fetch_row(res))
-        {
-            cJSON *newone;
-            cJSON_AddItemToArray(chatarr, newone = cJSON_CreateObject());
-            cJSON_AddStringToObject(newone, "chattime", clo[0]);
-            cJSON_AddStringToObject(newone, "fromname", clo[1]);
-            cJSON_AddStringToObject(newone, "toname", clo[2]);
-            cJSON_AddStringToObject(newone, "chat", clo[3]);
-        }
-        char *sendout=cJSON_Print(chat_res);
-        // printf("634   %s\n",sendout);/////
-        mysql_free_result(res);
-        send(fd,sendout,strlen(sendout),0);
-        char c_message[400];
-        memset(c_message,0,sizeof(c_message));
-        sprintf(c_message,"update %s set message=0 where name=\"%s\";",fromname->valuestring,toname->valuestring);
-        printf("708 %s\n",c_message);/////
-        if(mysql_real_query(mysql,c_message,strlen(c_message))!=0)
-        {
-            my_error("change message",__LINE__);
-        }
-        MYSQL_RES *res1=mysql_store_result(mysql);
-        mysql_free_result(res1);
-    }
-    else 
-    {
-        send(fd,"没有聊天记录",20,0);
-    }
-    // printf("705\n");
-    memset(result,0,sizeof(result));
-    if(recv(fd,result,sizeof(result),0)<0)
-    {
-        my_error("recv",__LINE__);
-    }
-    fprintf(stderr,"\033[33m726 %s\033[0m\n",result);
-    */
 
     if(strcmp(buf,"quit")==0)
-        // break;
         return;
     cJSON *root1=cJSON_Parse(buf);
     cJSON * fromname1=cJSON_GetObjectItem(root1,"fromname");
     cJSON * toname1=cJSON_GetObjectItem(root1,"toname");
     cJSON * chat1=cJSON_GetObjectItem(root1,"chat");
     sprintf(result,"insert into chat (fromname,toname,chat) value(\"%s\",\"%s\",\"%s\");",fromname1->valuestring,toname1->valuestring,
-    chat1->valuestring);
-    fprintf(stderr,"739 %s\n",result);
-    if(mysql_real_query(mysql,result,strlen(result))!=0)//总表
+    chat1->valuestring);//插入聊天记录总表
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
-        fprintf(stderr, "\033[35mMySQL Err: %s\033[36m", mysql_error(mysql));
         my_error("chat with",__LINE__);
     }
     MYSQL_RES *one=mysql_store_result(mysql);
     mysql_free_result(one);
     memset(result,0,sizeof(result));
-    // printf("715 刚才在哪\n");////
+    
     //接受者标记有未读数据message
-
     sprintf(result,"update %s set message=1 where name=\"%s\";",toname->valuestring,fromname->valuestring);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
@@ -760,7 +694,240 @@ void chat_withfriend(char *buf,int fd)
 
 }
 
+void create_group(char *buf,int fd)
+{
+    fprintf(stderr,"\033[33m$$##%s##$$\033[0m\n",buf);
+    // sleep(30);
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *table=cJSON_GetObjectItem(root,"table");
+    cJSON * name=cJSON_GetObjectItem(root,"name");
+    cJSON *num=cJSON_GetObjectItem(root,"group");
+    char result[1000];
+    memset(result,0,sizeof(result));
+    sprintf(result,"%s",table->valuestring);
+    printf("705  %s \n",result);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
+        my_error("create group",__LINE__);
+    }
+    MYSQL_RES *res=mysql_store_result(mysql);
+    mysql_free_result(res);
+    printf("###712\n");
+    memset(result,0,sizeof(result));
+    sprintf(result,"insert into %s_group values(\"%s\",1,1,0);"
+    ,name->valuestring,num->valuestring);
+    printf("713 %s\n",result);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("create group",__LINE__);
+    }
+    printf("717\n");
+}
 
+void dissolve_group(char *buf,int fd)
+{
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(root,"name");
+    cJSON *group=cJSON_GetObjectItem(root,"group");
+    char result[400];
+    memset(result,0,sizeof(result));
+    sprintf(result,"select * from %s_group where group_name=\"%s\" and owner=1;"
+    ,name->valuestring,group->valuestring);
+    printf("%s \n",result);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));       
+        my_error("dissolve",__LINE__);
+    }
+    MYSQL_RES *res=mysql_store_result(mysql);
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg!=0)
+    {
+        mysql_free_result(res);
+        memset(result,0,sizeof(result));
+        sprintf(result,"select name from %s;",group->valuestring);
+        if(mysql_real_query(mysql,result,strlen(result))!=0)
+        {
+            fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
+            
+            my_error("dissolve",__LINE__);
+        }
+        MYSQL_RES *res1=mysql_store_result(mysql);
+        MYSQL_ROW row;
+        while(row=mysql_fetch_row(res1))//把每个人的状态改变，而且标记信息
+        {
+            memset(result,0,sizeof(result));
+            sprintf(result,"update %s_group set status=0,read_message=1 where group=\"%s\";",row[0],group->valuestring);
+            if(mysql_real_query(mysql,result,strlen(result))!=0)
+            {
+                fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
+                
+                my_error("dissolve",__LINE__);
+            }
+        }
+        mysql_free_result(res1);
+        memset(result,0,sizeof(result));
+        sprintf(result,"drop table %s;",group->valuestring);
+        if(mysql_real_query(mysql,result,strlen(result))!=0)
+        {
+            fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));           
+            my_error("dissolve",__LINE__);
+        }
+        send(fd,"解散该群成功",50,0);
+    }
+    else 
+        send(fd,"您不能解散该群",50,0);
+
+}
+
+void manage_group(char *buf,int fd)
+{
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *toname=cJSON_GetObjectItem(root,"toname");
+    cJSON *casenum=cJSON_GetObjectItem(root,"casenum");
+    cJSON *fromname=cJSON_GetObjectItem(root,"fromname");
+    cJSON *group=cJSON_GetObjectItem(root,"group");
+    switch(casenum->valueint)
+    {
+        case 1:
+        {
+            char result[100];
+            memset(result,0,sizeof(result));
+            sprintf(result,"select * from %s where name=\"%s\";",group->valuestring,toname->valuestring);
+            if(mysql_real_query(mysql,result,strlen(result))!=0)
+            {
+                my_error("name not in group ",__LINE__);
+            }
+            MYSQL_RES * res=mysql_store_result(mysql);
+            int jdg=mysql_affected_rows(mysql);
+            mysql_free_result(res);
+            if(jdg!=0)
+            {
+                memset(result,0,sizeof(result));
+                sprintf(result,"delete from %s where name=\"%s\";",group->valuestring,toname->valuestring);
+                if(mysql_real_query(mysql,result,strlen(result))!=0)
+                {
+                    my_error("name not in group ",__LINE__);
+                }
+                send(fd,"此人已经踢出群",20,0);
+            }
+            else 
+                send(fd,"不能删除此人",20,0);
+        }
+            break;
+        case 2:
+        {
+            char result[100];
+            memset(result,0,sizeof(result));
+            sprintf(result,"select * from account where name=\"%s\";",toname->valuestring);
+            if(mysql_real_query(mysql,result,strlen(result))!=0)
+            {
+                my_error("name not in group ",__LINE__);
+            }
+            MYSQL_RES * res=mysql_store_result(mysql);
+            int jdg=mysql_affected_rows(mysql);
+            mysql_free_result(res);
+            if(jdg!=0)
+            {
+                memset(result,0,sizeof(result));
+                sprintf(result,"insert into group_ask values(\"%s\",\"%s\",\"%s\");",
+                fromname->valuestring,toname->valuestring,group->valuestring);
+                if(mysql_real_query(mysql,result,strlen(result))!=0)
+                {
+                    my_error("name not in group ",__LINE__);
+                }
+                send(fd,"发送成功",20,0);
+            }
+            else 
+                send(fd,"发送失败",20,0);
+        }
+            break;
+    }
+
+}
+
+void group_ask(char *buf,int fd)
+{
+    fprintf(stderr,"\033[32m$#%s#$\033[0m", buf);  
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *casenum=cJSON_GetObjectItem(root,"casenum");
+    switch(casenum->valueint)
+    {
+        case 1://发送的群邀请
+        {
+            char result[400];
+            cJSON *fromname=cJSON_GetObjectItem(root,"fromname");
+            
+            memset(result,0,sizeof(result));
+            sprintf(result,"select * from group_ask where from_name=\"%s\";",fromname->valuestring);
+            if(mysql_real_query(mysql,result,strlen(result))!=0)
+            {
+                my_error("group ask 1",__LINE__);
+            }
+            MYSQL_RES *res=mysql_store_result(mysql);
+
+            int jdg=mysql_affected_rows(mysql);
+            
+            if(jdg!=0)
+            {
+                MYSQL_ROW row;
+                cJSON *group_ask = cJSON_CreateObject();
+                cJSON *grouparr;
+                cJSON_AddItemToObject(group_ask, "list", grouparr = cJSON_CreateArray());
+
+                while(row=mysql_fetch_row(res))
+                {
+                    cJSON *newone;
+                    cJSON_AddItemToArray(grouparr, newone = cJSON_CreateObject());
+                    cJSON_AddStringToObject(newone, "toname", row[1]);
+                    cJSON_AddStringToObject(newone, "group", row[2]);
+                }
+                char *sendout=cJSON_Print(group_ask);
+                fprintf(stderr,"\033[32m$#%d#$\033[0m", __LINE__);
+                send(fd,sendout,strlen(sendout),0);
+            }
+            else 
+                send(fd,"没有发送群邀请",30,0);
+            mysql_free_result(res);
+        }        
+
+            break;
+        case 2://收到的群邀请
+        {
+            char result[400];
+            cJSON *tomname=cJSON_GetObjectItem(root,"tomname");
+            memset(result,0,sizeof(result));
+            sprintf(result,"select * from group_ask where to_name=\"%s\";",tomname->valuestring);
+            if(mysql_real_query(mysql,result,strlen(result))!=0)
+            {
+                my_error("group ask 1",__LINE__);
+            }
+            MYSQL_RES *res=mysql_store_result(mysql);
+            int jdg=mysql_affected_rows(mysql);
+            if(jdg!=0)
+            {
+                MYSQL_ROW row;
+                cJSON *group_ask = cJSON_CreateObject();
+                cJSON *grouparr;
+                cJSON_AddItemToObject(group_ask, "list", grouparr = cJSON_CreateArray());
+                while(row=mysql_fetch_row(res))
+                {
+                    cJSON *newone;
+                    cJSON_AddItemToArray(grouparr, newone = cJSON_CreateObject());
+                    cJSON_AddStringToObject(newone, "fromname", row[0]);
+                    cJSON_AddStringToObject(newone, "group", row[2]);
+                } 
+                char *sendout=cJSON_Print(group_ask);
+                send(fd,sendout,strlen(sendout),0);
+            }
+            else 
+                send(fd,"没有收到群邀请",30,0);
+            mysql_free_result(res);
+        }
+            break;
+    }
+}
 void log_up(char *buf,int fd)
 {
     MYSQL_ROW row;
@@ -806,13 +973,21 @@ void create_table(char *name)//建立表格
 	memset(result,0,sizeof(result));
     strcpy(result,"create table ");
     strcat(result,name);
-    strcat(result,"( name varchar(20) NULL , chat text ,status int NULL,friend int NULL,message int NULL,UNIQUE(name))DEFAULT CHARSET=utf8;");
+    strcat(result,"( name varchar(20) NULL , chat text ,status int ,friend int NULL,message int NULL,UNIQUE(name))DEFAULT CHARSET=utf8;");
     //名字不能重复
-    //printf("597%s\n",result);
     if(mysql_real_query(mysql,result,sizeof(result))!=0)
     {
         my_error("create self table",__LINE__); 
     }
+    memset(result,0,sizeof(result));
+    //创建群列表
+    sprintf(result,"create table %s_group ( group_name varchar(20) unique,owner int,status int,read_message int)DEFAULT CHARSET=utf8;",name);
+    //printf("964 %s",result);
+    if(mysql_real_query(mysql,result,sizeof(result))!=0)
+    {
+        my_error("create self table",__LINE__); 
+    }
+    printf("##969 \n##");
 }
 
 void find_passwd(char *buf,int fd)
