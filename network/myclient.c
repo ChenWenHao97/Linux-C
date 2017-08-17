@@ -19,7 +19,7 @@
 #include<cJSON.h>
 #include<pthread.h>
 
-#define mouth 4507
+#define mouth 45077
 
 //向上移动光标 cursor_up(3); 代表向上移动3.
 #define cursor_up(n) \
@@ -630,7 +630,6 @@ void search_chat(char *name)
     printf("\t\t\t\t请输入您想查看和谁的聊天记录:");
     char result[10000];
     scanf(" %s",result);
-    //printf("617%s\n",result);
     cJSON *case1=cJSON_CreateObject();
     cJSON_AddStringToObject(case1,"toname",result);
     cJSON_AddStringToObject(case1,"fromname",name);
@@ -682,78 +681,78 @@ void search_chat(char *name)
 }
 void chat_withfriend(char *name)
 {
-        printf("\t\t\t\t请输入您要发送信息的好友:");
-        char result[1000];//数组开大才可以接受
-        char words[10000];
+    printf("\t\t\t\t请输入您要发送信息的好友:");
+    char result[1000];//数组开大才可以接受
+    char words[10000];
+    memset(words,0,sizeof(words));
+    scanf(" %s",result);
+    getchar();
+    while(1)
+    {
+        system("clear");
+        cJSON *case1=cJSON_CreateObject();
+        cJSON_AddStringToObject(case1,"toname",result);
+        cJSON_AddStringToObject(case1,"fromname",name);
+        cJSON_AddNumberToObject(case1,"type",8);
+        cJSON_AddNumberToObject(case1,"casenum",1);
+        char *sendout1=cJSON_Print(case1);
+        send(client_fd,sendout1,strlen(sendout1),0);
         memset(words,0,sizeof(words));
-        scanf(" %s",result);
-        getchar();
-        while(1)
+        if(recv(client_fd,words,sizeof(words),0)<0)
         {
-            system("clear");
-            cJSON *case1=cJSON_CreateObject();
-            cJSON_AddStringToObject(case1,"toname",result);
-            cJSON_AddStringToObject(case1,"fromname",name);
-            cJSON_AddNumberToObject(case1,"type",8);
-            cJSON_AddNumberToObject(case1,"casenum",2);
-            char *sendout1=cJSON_Print(case1);
-            send(client_fd,sendout1,strlen(sendout1),0);
-            memset(words,0,sizeof(words));
-            if(recv(client_fd,words,sizeof(words),0)<0)
-            {
-                my_error("recv case 1",__LINE__);
-            }
-            if(strcmp(words,"没有聊天记录")==0)
-            {
-                printf("\t\t\t\t没有聊天记录\n");
-                printf(START);
-            }
-            else 
-            {
-                cJSON * chatres=cJSON_Parse(words);
-                cJSON *list = cJSON_GetObjectItem(chatres,"list");
-                int size=cJSON_GetArraySize(list);
-                 printf(" 659 %d\n",size);
-                for(int i=0;i<size;i++)//最重要的!!!!
-                {
-                    cJSON *arr=cJSON_GetArrayItem(list,i);
-                    cJSON *chattime=cJSON_GetObjectItem(arr,"chattime");
-                    printf("%s :",chattime->valuestring);
-                    cJSON *fromname=cJSON_GetObjectItem(arr,"fromname");
-                    printf("%s\n",fromname->valuestring);
-                    cJSON *chat=cJSON_GetObjectItem(arr,"chat");
-                    printf("%s\n",chat->valuestring);
-                    putchar('\n');
-                }
-                fflush(stdin);
-                printf(START);
-            }
-            printf("\n##730\n");
-            memset(words,0,sizeof(words));
-            printf("\n\t\t\t\t请输入你想发送的内容(输入quit结束):");
-            fgets(words,1000,stdin);
-            words[strlen(words)-1]='\0';
-            printf(" 734 %s\n",words);
-            if(strcmp(words,"quit")==0)
-            {
-                send(client_fd,"quit",10,0);
-                break;
-            }
-            cJSON *root=cJSON_CreateObject();
-            cJSON_AddStringToObject(root,"toname",result);
-            cJSON_AddStringToObject(root,"fromname",name);
-            cJSON_AddNumberToObject(root,"type",8);
-            cJSON_AddNumberToObject(root,"casenum",2);
-            cJSON_AddStringToObject(root,"chat",words);
-            char *sendout=cJSON_Print(root);
-            printf("###745 %s\n",sendout);
-            send(client_fd,sendout,strlen(sendout),0);
+            my_error("recv case 1",__LINE__);
         }
-
-    
+        if(strcmp(words,"没有聊天记录")==0)
+        {
+            printf("\t\t\t\t没有聊天记录\n");
+            printf(START);
+        }
+        else 
+        {
+            cJSON * chatres=cJSON_Parse(words);
+            fprintf(stderr,"\033[36m%s\033[0m\n",words);
+            cJSON *list = cJSON_GetObjectItem(chatres,"list");
+            int size=cJSON_GetArraySize(list);
+                printf(" 659 %d\n",size);
+            for(int i=0;i<size;i++)//最重要的!!!!
+            {
+                cJSON *arr=cJSON_GetArrayItem(list,i);
+                cJSON *chattime=cJSON_GetObjectItem(arr,"chattime");
+                printf("%s :",chattime->valuestring);
+                cJSON *fromname=cJSON_GetObjectItem(arr,"fromname");
+                printf("%s\n",fromname->valuestring);
+                cJSON *chat=cJSON_GetObjectItem(arr,"chat");
+                printf("%s\n",chat->valuestring);
+                putchar('\n');
+            }
+            fflush(stdin);
+            printf(START);
+        }
+        printf("\n##730\n");
+        memset(words,0,sizeof(words));
+        printf("\n\t\t\t\t请输入你想发送的内容(输入quit结束):");
+        fgets(words,1000,stdin);
+        words[strlen(words)-1]='\0';
+        printf(" 734 %s\n",words);
+        if(strcmp(words,"quit")==0)
+        {
+            // send(client_fd,"quit",10,0);//！！！！如果send的话，服务器recv一直在阻塞
+            break;
+        }
+        cJSON *root=cJSON_CreateObject();
+        cJSON_AddStringToObject(root,"toname",result);
+        cJSON_AddStringToObject(root,"fromname",name);
+        cJSON_AddNumberToObject(root,"type",8);
+        cJSON_AddNumberToObject(root,"casenum",2);
+        cJSON_AddStringToObject(root,"chat",words);
+        char *sendout=cJSON_Print(root);
+        //printf("###745 %s\n",sendout);
+        send(client_fd,sendout,strlen(sendout),0);
+    }
 }
- void log_up(int client_fd)//注册
- {
+
+void log_up(int client_fd)//注册
+{
     char passwd1[20],passwd2[20],name[100];
     int i=0,count=0;
     while(1)
@@ -777,7 +776,7 @@ void chat_withfriend(char *name)
             break;
         }
         i=0;
-         while(1)//第一次输入密码
+            while(1)//第一次输入密码
         {
             if(i!=0)
                 printf("\t\t\t\t请重新输入8位密码:");
@@ -836,17 +835,17 @@ void chat_withfriend(char *name)
                 }
                 if (t != 127)
                 {
-                   printf("*");
-                   passwd2[i++] = t;
+                    printf("*");
+                    passwd2[i++] = t;
                 }
                 if(i<0)
                 {
-                   passwd2[0]='\0';
-                   i=0;
+                    passwd2[0]='\0';
+                    i=0;
                 } 
             }
-	        if(i==8&&strcmp(passwd2,passwd1)==0)//比較兩次輸入一致不一致
-		        break;
+            if(i==8&&strcmp(passwd2,passwd1)==0)//比較兩次輸入一致不一致
+                break;
             else 
                 printf("\n与第一次输入密码不符合，请重新输入!\n");
         }
@@ -879,7 +878,7 @@ void chat_withfriend(char *name)
             {
                 printf("\n\t\t\t\t%s\n",buf);
                 sleep(3);
-			    break;//退出大循环
+                break;//退出大循环
             }
             else 
             {
