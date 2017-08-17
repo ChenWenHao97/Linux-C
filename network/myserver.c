@@ -23,7 +23,7 @@
 #define USER "root"
 #define PASSWD "173874"
 #define DB "TESTDB"
-#define mouth 45077
+#define mouth 4507
 void my_error(char *string,int line);
 int epoll_fd;
 void *thread(void);
@@ -33,16 +33,16 @@ void find_passwd(char *buf,int fd);
 void create_table(char *name);//建立每个人的表
 void change_status(char *name);//改变每个人在线状态
 void search_online_friend(char *buf,int fd);
-void add_friend(char *name,int fd);
-void friend_ask(char *name,int fd);
+void add_friend(char *buf,int fd);
+void friend_ask(char *buf,int fd);
 void search_allfriend(char *name,int fd);
-void exit_out(char *name,int fd);
-void delete_friend(char*name ,int fd);
-void read_message(char *name,int fd);
+void exit_out(char *buf,int fd);
+void delete_friend(char *buf,int fd);
+void read_message(char *buf,int fd);
 void search_chat(char *buf,int fd);
 void chat_withfiend(char *buf,int fd);
 char * get_time(void);
-void chat(char*name,int fd);/*
+void chat(char *buf,int fd);/*
 void search_group(char *name,int fd);*/
 typedef struct LINK_USER {
     char name[20];
@@ -120,7 +120,7 @@ void *thread(void )
    char buf[400];
     while(1)//处理事件
     {
-        nfds=epoll_wait(epoll_fd,events,40,-1);
+        nfds=epoll_wait(epoll_fd,events,40,0);
         if(nfds==-1)
         {
             my_error("epoll_wait failed",__LINE__);
@@ -595,7 +595,6 @@ void chat(char *buf,int fd)
         }
             break;
     }
-
 }
 
 void search_chat(char *buf,int fd)
@@ -604,7 +603,7 @@ void search_chat(char *buf,int fd)
     cJSON * fromname=cJSON_GetObjectItem(root,"fromname");
     cJSON * toname=cJSON_GetObjectItem(root,"toname");
     cJSON * chat=cJSON_GetObjectItem(root,"chat");
-    char result[10000];
+    char result[100000];
     memset(result,0,sizeof(result));
     sprintf(result,"select * from chat where (fromname=\"%s\" and toname=\"%s\") or " \
     "(fromname=\"%s\" and toname=\"%s\");",fromname->valuestring,toname->valuestring,toname->valuestring,fromname->valuestring);
@@ -642,47 +641,118 @@ void search_chat(char *buf,int fd)
             my_error("change message",__LINE__);
         }
     }
-    else {
+    else 
+    {
         send(fd,"没有聊天记录",20,0);
     }
 }
 
 void chat_withfriend(char *buf,int fd)
 {
-    cJSON *root=cJSON_Parse(buf);
-    cJSON * fromname=cJSON_GetObjectItem(root,"fromname");
-    cJSON * toname=cJSON_GetObjectItem(root,"toname");
-    cJSON * chat=cJSON_GetObjectItem(root,"chat");
-    char result[1000];
-    memset(result,0,sizeof(result));
-   sprintf(result,"insert into chat (fromname,toname,chat) value(\"%s\",\"%s\",\"%s\");",fromname->valuestring,toname->valuestring,
-chat->valuestring);
-    printf("638 %s",result);
-    if(mysql_real_query(mysql,result,strlen(result))!=0)//总表
-    {
-        my_error("chat with",__LINE__);
+    char result[100000];
+    int flag=1;
+    while(1)//只有采用这样的循环才可以避免客户端和服务器发的消息不对应
+    {    /*
+        send  这里recv就是buf,所以每次客户端循环都发送了，但是第二次接受需要忽略，因为每次send所有信息都有，
+        第一次只是为了能进入case语句，第二次就没有需要的信息了
+        如果第二次不recv，第一次send过来的内容还在缓冲区，所以每次recv都会得到上次内容
+        recv send
+        send recv
+        */
+        if(flag)
+        {
+            flag=0;
+        }
+        else
+        {
+            memset(result,0,sizeof(result));
+            recv(fd,result,sizeof(result),0);
+        }
+        cJSON *root=cJSON_Parse(buf);
+        cJSON * fromname=cJSON_GetObjectItem(root,"fromname");
+        cJSON * toname=cJSON_GetObjectItem(root,"toname");
+        cJSON * chat=cJSON_GetObjectItem(root,"chat");
+
+        memset(result,0,sizeof(result));
+        sprintf(result,"select * from chat where (fromname=\"%s\" and toname=\"%s\") or " \
+        "(fromname=\"%s\" and toname=\"%s\");",fromname->valuestring,toname->valuestring,toname->valuestring,fromname->valuestring);
+        printf("611 %s\n",result);
+        if(mysql_real_query(mysql,result,strlen(result))!=0)
+        {
+            my_error("search chat result",__LINE__);
+        }
+        MYSQL_RES *res=mysql_store_result(mysql);
+        MYSQL_ROW row,*rows,clo;
+        int jdg=mysql_affected_rows(mysql);
+        if(jdg!=0)
+        {
+            cJSON *chat_res = cJSON_CreateObject();
+            cJSON *chatarr;
+            cJSON_AddItemToObject(chat_res, "list", chatarr = cJSON_CreateArray());
+            while (clo = mysql_fetch_row(res))
+            {
+                cJSON *newone;
+                cJSON_AddItemToArray(chatarr, newone = cJSON_CreateObject());
+                cJSON_AddStringToObject(newone, "chattime", clo[0]);
+                cJSON_AddStringToObject(newone, "fromname", clo[1]);
+                cJSON_AddStringToObject(newone, "toname", clo[2]);
+                cJSON_AddStringToObject(newone, "chat", clo[3]);
+            }
+            char *sendout=cJSON_Print(chat_res);
+            // printf("634   %s\n",sendout);/////
+            mysql_free_result(res);
+            send(fd,sendout,strlen(sendout),0);
+            char c_message[400];
+            memset(c_message,0,sizeof(c_message));
+            sprintf(c_message,"update %s set message=0 where name=\"%s\";",fromname->valuestring,toname->valuestring);
+            printf("708 %s\n",c_message);/////
+            if(mysql_real_query(mysql,c_message,strlen(c_message))!=0)
+            {
+                my_error("change message",__LINE__);
+            }
+            MYSQL_RES *res1=mysql_store_result(mysql);
+            mysql_free_result(res1);
+        }
+        else 
+        {
+            send(fd,"没有聊天记录",20,0);
+        }
+        // printf("705\n");
+        memset(result,0,sizeof(result));
+        if(recv(fd,result,sizeof(result),0)<0)
+        {
+            my_error("recv",__LINE__);
+        }
+        fprintf(stderr,"\033[33m713 %s\033[0m\n",result);
+        
+        if(strcmp(result,"quit")==0)
+            break;
+            // return;
+        cJSON *root1=cJSON_Parse(result);
+        cJSON * fromname1=cJSON_GetObjectItem(root1,"fromname");
+        cJSON * toname1=cJSON_GetObjectItem(root1,"toname");
+        cJSON * chat1=cJSON_GetObjectItem(root1,"chat");
+        sprintf(result,"insert into chat (fromname,toname,chat) value(\"%s\",\"%s\",\"%s\");",fromname1->valuestring,toname1->valuestring,
+        chat1->valuestring);
+        fprintf(stderr,"720 %s\n",result);
+        if(mysql_real_query(mysql,result,strlen(result))!=0)//总表
+        {
+            my_error("chat with",__LINE__);
+        }
+        MYSQL_RES *one=mysql_store_result(mysql);
+        mysql_free_result(one);
+        memset(result,0,sizeof(result));
+        // printf("715 刚才在哪\n");////
+        //接受者标记有未读数据message
+        memset(result,0,sizeof(result));
+        sprintf(result,"update %s set message=1 where name=\"%s\";",toname->valuestring,fromname->valuestring);
+        if(mysql_real_query(mysql,result,strlen(result))!=0)
+        {
+            my_error("chat with",__LINE__);
+        }
+        MYSQL_RES *three=mysql_store_result(mysql);
+        mysql_free_result(three);
     }
-    MYSQL_RES *one=mysql_store_result(mysql);
-    mysql_free_result(one);
-    memset(result,0,sizeof(result));
-    // sprintf(result,"update %s set chat=concat(chat,\"%s:%s\") where name=\"%s\";",toname->valuestring
-    // ,fromname->valuestring,result2,fromname->valuestring);
-    // printf("648 %s\n",result3);////
-    // if(mysql_real_query(mysql,result3,strlen(result3))!=0)//接受者记录
-    // {
-    //     my_error("chat with",__LINE__);
-    // }
-    // MYSQL_RES *two=mysql_store_result(mysql);
-    // mysql_free_result(two);
-    //接受者标记有未读数据message
-    memset(result,0,sizeof(result));
-    sprintf(result,"update %s set message=1 where name=\"%s\";",toname->valuestring,fromname->valuestring);
-    if(mysql_real_query(mysql,result,strlen(result))!=0)
-    {
-        my_error("chat with",__LINE__);
-    }
-    MYSQL_RES *three=mysql_store_result(mysql);
-    mysql_free_result(three);
 }
 
 
