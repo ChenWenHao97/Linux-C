@@ -19,7 +19,7 @@
 #include<cJSON.h>
 #include<pthread.h>
 
-#define mouth 4507
+#define mouth 45077
 
 //向上移动光标 cursor_up(3); 代表向上移动3.
 #define cursor_up(n) \
@@ -193,7 +193,7 @@ void log_in(int client_fd)
         if(strcmp(buf,"登录成功!")==0)
             {
                 printf("\n\n\t\t\t\t\t%s\n",buf);
-                sleep(2);
+                sleep(1);
             //system("sl");
                 system("clear");
                 break;
@@ -1075,7 +1075,7 @@ void read_group_ask(char *name)
     {
         my_error("read_group_ask",__LINE__);
     }
-    printf("result %s\n");
+    // printf("result %s\n");
     if(strcmp(result,"没有收到群请求")==0)
     {
         printf("\t\t%s\n",result);
@@ -1263,7 +1263,7 @@ void chat_withgroup(char *name)
         printf("请输入你想发送的内容(输入quit结束):");
         memset(result,0,sizeof(result));
         fgets(result,10000,stdin);
-        printf("1171%s",result);/////
+       // printf("1171%s",result);/////
         if(strcmp(result,"quit\n")==0)
         {
             // send(client_fd,result,strlen(result),0);

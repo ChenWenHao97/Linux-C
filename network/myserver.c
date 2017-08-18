@@ -23,7 +23,7 @@
 #define USER "root"
 #define PASSWD "173874"
 #define DB "TESTDB"
-#define mouth 4507
+#define mouth 45077
 void my_error(char *string,int line);
 int epoll_fd;
 void *thread(void);
@@ -31,7 +31,7 @@ void log_in(char *buf,int fd);
 void log_up(char *buf,int fd);
 void find_passwd(char *buf,int fd);
 void create_table(char *name);//建立每个人的表
-void change_status(char *name);//改变每个人在线状态
+void change_status(char *name,int fd);//改变每个人在线状态
 void search_online_friend(char *buf,int fd);
 void add_friend(char *buf,int fd);
 void friend_ask(char *buf,int fd);
@@ -200,11 +200,12 @@ void *thread(void )
                case 14:
                     chat_with(buf,events[i].data.fd);
                     break;
-              case 15:
+               case 15:
                     display_group(buf,events[i].data.fd);
                     break;
-              case 16:
+               case 16:
                     read_group_ask(buf,events[i].data.fd);
+                    break;
                case -1:
                     exit_out(buf,events[i].data.fd);
                     break;
@@ -246,12 +247,11 @@ void log_in(char *buf,int fd)
     {
         send(fd,"登录成功!",20,0);
         mysql_free_result(res);
-	    change_status(name->valuestring);//改变在线状态
+	    change_status(name->valuestring,fd);//改变在线状态
     }
 }
-void change_status(char *name)//改变在线状态
+void change_status(char *name,int fd)//改变在线状态
 {
-    //printf("219 改变在线状态\n");
     LINK_USER * find;
     find=head;
     while(find!=NULL)
@@ -259,20 +259,19 @@ void change_status(char *name)//改变在线状态
         if(strcmp(find->name,name)==0)
         {
             find->status=1;
+            find->fd=fd;
             break;
         }
         find=find->next;
     }
     char result[400];
     sprintf(result,"update account set status=1 where name=\"%s\";",name);
-   // printf("233 %s",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
         my_error("change satus",__LINE__);
     }
     MYSQL_RES *res=mysql_store_result(mysql);
     mysql_free_result(res);
-    //printf("237 改变成功");
 }
 void search_online_friend(char *buf,int fd)//查看在线好友
 {
@@ -709,7 +708,7 @@ void chat_withfriend(char *buf,int fd)
 
 void create_group(char *buf,int fd)
 {
-    fprintf(stderr,"\033[33m$$##%s##$$\033[0m\n",buf);
+    //fprintf(stderr,"\033[33m$$##%s##$$\033[0m\n",buf);
     // sleep(30);
     cJSON *root=cJSON_Parse(buf);
     cJSON *table=cJSON_GetObjectItem(root,"table");
@@ -718,24 +717,41 @@ void create_group(char *buf,int fd)
     char result[1000];
     memset(result,0,sizeof(result));
     sprintf(result,"%s",table->valuestring);
-    printf("705  %s \n",result);
+   // printf("705  %s \n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
-        fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
+       // fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
         my_error("create group",__LINE__);
     }
     MYSQL_RES *res=mysql_store_result(mysql);
     mysql_free_result(res);
-    printf("###712\n");
+    // printf("###712\n");
     memset(result,0,sizeof(result));
     sprintf(result,"insert into %s_group values(\"%s\",1,1,0);"
     ,name->valuestring,num->valuestring);
-    printf("713 %s\n",result);
+    // printf("713 %s\n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
+        // fprintf(stderr,"\033[33m[%s]\033[0m\n",mysql_error(mysql));
         my_error("create group",__LINE__);
     }
-    printf("717\n");
+    memset(result,0,sizeof(result));
+    sprintf(result,"create table %s_member(name varchar(20));",num->valuestring);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)//建立成员表
+    {
+        fprintf(stderr,"\033[33m[%s]\033[0m\n",mysql_error(mysql));  
+        my_error("create group",__LINE__);
+    }
+    memset(result,0,sizeof(result));
+    sprintf(result,"insert into %s_member values(\"%s\");",num->valuestring,name->valuestring);
+    // printf("result %s\n",result);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)//建立成员表
+    {
+        fprintf(stderr,"\033[33m[%s]\033[0m\n",mysql_error(mysql));
+        
+        my_error("create group",__LINE__);
+    }
+    //printf("717\n");
 }
 
 void dissolve_group(char *buf,int fd)
@@ -747,10 +763,10 @@ void dissolve_group(char *buf,int fd)
     memset(result,0,sizeof(result));
     sprintf(result,"select * from %s_group where group_name=\"%s\" and owner=1;"
     ,name->valuestring,group->valuestring);
-    printf("%s \n",result);
+   // printf("%s \n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
-        fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));       
+        //fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));       
         my_error("dissolve",__LINE__);
     }
     MYSQL_RES *res=mysql_store_result(mysql);
@@ -759,34 +775,38 @@ void dissolve_group(char *buf,int fd)
     {
         mysql_free_result(res);
         memset(result,0,sizeof(result));
-        sprintf(result,"select name from %s;",group->valuestring);
+        memset(result,0,sizeof(result));
+        sprintf(result,"drop table %s;",group->valuestring);
+        printf("%s\n",result);
         if(mysql_real_query(mysql,result,strlen(result))!=0)
         {
-            fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
+           fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));           
+            my_error("dissolve",__LINE__);
+        }
+        memset(result,0,sizeof(result));
+        sprintf(result,"select name from %s_member;",group->valuestring);
+        if(mysql_real_query(mysql,result,strlen(result))!=0)
+        {
+           // fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
             
             my_error("dissolve",__LINE__);
         }
         MYSQL_RES *res1=mysql_store_result(mysql);
         MYSQL_ROW row;
-        while(row=mysql_fetch_row(res1))//把每个人的状态改变，而且标记信息
+        while(row=mysql_fetch_row(res1))//把每个人相应的群删除
         {
             memset(result,0,sizeof(result));
-            sprintf(result,"update %s_group set status=0,read_message=1 where group=\"%s\";",row[0],group->valuestring);
+            sprintf(result,"delete from %s_group where group_name=\"%s\";",row[0],group->valuestring);
             if(mysql_real_query(mysql,result,strlen(result))!=0)
             {
-                fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
+                //fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));
                 
                 my_error("dissolve",__LINE__);
             }
         }
         mysql_free_result(res1);
         memset(result,0,sizeof(result));
-        sprintf(result,"drop table %s;",group->valuestring);
-        if(mysql_real_query(mysql,result,strlen(result))!=0)
-        {
-            fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql));           
-            my_error("dissolve",__LINE__);
-        }
+        sprintf(result,"drop table %s_member",group->valuestring);
         send(fd,"解散该群成功",50,0);
     }
     else 
@@ -960,7 +980,15 @@ void group_ask(char *buf,int fd)
                     {
                         my_error("group ask 2",__LINE__);
                     }
+                    memset(result,0,sizeof(result));
+                    sprintf(result,"insert into %s_member values(\"%s\");",agree->valuestring,name->valuestring);
+                    if(mysql_real_query(mysql,result,strlen(result))!=0)
+                    {
+                        fprintf(stderr,"\033[32m$$##%s##$$\033[0m", mysql_error(mysql)); 
+                        my_error("group ask 2",__LINE__);
+                    }
                 }
+              
             }
             else 
                 send(fd,"没有收到群邀请",30,0);
@@ -1110,7 +1138,6 @@ void read_group_ask(char *buf,int fd)
     MYSQL_ROW row;
     cJSON *rows,*arr;
     int jdg=mysql_affected_rows(mysql);
-    // printf("1112 %d\n",jdg);
     if(jdg==0)
     {
         send(fd,"没有收到群请求",30,0);
@@ -1118,7 +1145,7 @@ void read_group_ask(char *buf,int fd)
     }
     else 
     {
-        printf("1119\n");
+        // printf("1119\n");
         cJSON *sendout=cJSON_CreateObject();
         cJSON_AddItemToObject(sendout,"list",rows=cJSON_CreateArray());
         while(row=mysql_fetch_row(res))
