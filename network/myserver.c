@@ -895,7 +895,7 @@ void group_ask(char *buf,int fd)
             break;
         case 2://收到的群邀请
         {
-            char result[400];
+            char result[1000];
             cJSON *tomname=cJSON_GetObjectItem(root,"tomname");
             memset(result,0,sizeof(result));
             sprintf(result,"select * from group_ask where to_name=\"%s\";",tomname->valuestring);
@@ -920,9 +920,32 @@ void group_ask(char *buf,int fd)
                 } 
                 char *sendout=cJSON_Print(group_ask);
                 send(fd,sendout,strlen(sendout),0);
+                while(1)
+                {
+                    memset(result,0,sizeof(result));
+                    if(recv(fd,result,sizeof(result),0)<0)
+                    {
+                        my_error("group_recv",__LINE__);
+                    }
+                    if(strcmp(result,"quit")==0)
+                        break;
+                    printf("932 %s",result);
+                    cJSON *recvout=cJSON_Parse(result);
+                    cJSON *agree=cJSON_GetObjectItem(recvout,"agree");
+                    cJSON *name=cJSON_GetObjectItem(recvout,"name");
+                    memset(result,0,sizeof(result));
+                    sprintf(result,"insert into %s_group values(\"%s\",0,1,0);",
+                    name->valuestring,agree->valuestring);
+                    printf("939 %s",result);
+                    if(mysql_real_query(mysql,result,strlen(result))!=0)
+                    {
+                        my_error("group ask 2",__LINE__);
+                    }
+                }
             }
             else 
                 send(fd,"没有收到群邀请",30,0);
+            
             mysql_free_result(res);
         }
             break;

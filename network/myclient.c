@@ -196,10 +196,10 @@ void log_in(int client_fd)
         else
             count++;
         if(count!=3)
-            printf("\t\t\t\t您已输错%d次,还有%d次机会!\n",count,3-count);
+            printf("\n\t\t\t\t您已输错%d次,还有%d次机会!\n",count,3-count);
         if(count==3)
         {
-            printf("\t\t\t\t您已输错3次！\n");
+            printf("\n\t\t\t\t您已输错3次！\n");
             exit(1);
         }
     }
@@ -1005,7 +1005,8 @@ void group_ask(char *name)
                 }
                 if(strcmp(result,"没有收到群邀请")==0)
                 {
-                    printf("\t\t\t\t%s\n",result);
+                    printf("\n\t\t\t\t%s\n",result);
+                    sleep(2);
                 }
                 else
                 {
@@ -1018,17 +1019,29 @@ void group_ask(char *name)
                         arr=cJSON_GetArrayItem(list,i);
                         cJSON *fromname=cJSON_GetObjectItem(arr,"fromname");
                         cJSON *group=cJSON_GetObjectItem(arr,"group");
-                        printf("%d、 %s邀请你加入群:%s",i+1,fromname->valuestring,group->valuestring);
+                        printf("%d、 %s邀请你加入群:%s\n",i+1,fromname->valuestring,group->valuestring);
 
                     }
-                }
-                while(1)
-                {
-                    printf("请输入你想加入的群号码(quit退出):");
-                    char agree[100];
-                    scanf(" %s%*c",yes);
-                    if(strcmp(yes,"yes")==0)
-                        break;
+                    while(1)
+                    {
+                        printf("请输入你想加入的群号码(quit退出):");
+                        char agree[100];
+                        scanf(" %s%*c",agree);
+                        if(strcmp(agree,"quit")==0)
+                        {
+                            send(client_fd,"quit",10,0);
+                            break;
+                        }
+                        cJSON * basesend=cJSON_CreateObject();
+                        cJSON_AddStringToObject(basesend,"agree",agree);
+                        cJSON_AddNumberToObject(basesend,"type",13);
+                        cJSON_AddStringToObject(basesend,"name",name);
+                        cJSON_AddNumberToObject(basesend,"casenum",2);
+                        char *sendagree=cJSON_Print(basesend);
+                        send(client_fd,sendagree,strlen(sendagree),0);
+                        printf("发送成功！\n");
+                        sleep(1);
+                    }
                 }
                 
             }
