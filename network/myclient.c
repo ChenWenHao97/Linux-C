@@ -57,6 +57,11 @@ void manage_group(char *name);
 void group_ask(char *name);
 void chat_group(char *name);
 void read_group(char *name);
+void chat_withgroup(char *name);
+void search_groupchat(char *name);
+void chat_with(char *name);
+void display_group(char *name);
+void read_group_ask(char *name);
 int client_fd;//全局变量  
 int main()
 {
@@ -255,9 +260,11 @@ void log_after_ui(char *name)//登录之后的界面
                     printf("\t\t\t\t2、解散群\n");
                     printf("\t\t\t\t3、管理群\n");
                     printf("\t\t\t\t4、群邀请\n");
-                   // printf("\t\t\t\t5、群聊天\n");
+                    printf("\t\t\t\t5、群聊天\n");
+                    printf("\t\t\t\t6、查看所有群\n");
                     printf("\t\t\t\t0、返回上一级\n");
                     printf(START);
+                    read_group_ask(name);
                     int flag=log_after_group(name);
                     if(flag==0)
                         break;
@@ -438,7 +445,7 @@ void friend_ask(char *name)
                 sleep(3);
                 break;
             }
-            fprintf(stderr,"%s",result);
+            //fprintf(stderr,"%s",result);
             root=cJSON_Parse(result);
             list=cJSON_GetObjectItem(root,"list");
             size=cJSON_GetArraySize(list);
@@ -508,6 +515,7 @@ void friend_ask(char *name)
                         break;
                     }
                     char *out=cJSON_Print(root1);
+                    //printf(" 514 %s",out);
                     printf("\t\t\t\t添加好友成功!");
                     send(client_fd,out,strlen(out),0);
                 }
@@ -562,7 +570,7 @@ void delete_friend(char *name)
     {
         printf("\t\t\t\t请输入你要删除的好友");
         char reduce[50];
-        fprintf(stderr,"\033[10C");
+        //fprintf(stderr,"\033[10C");
         scanf(" %s",reduce);
         cJSON *root=cJSON_CreateObject();
         cJSON_AddStringToObject(root,"selfname",name);
@@ -782,11 +790,13 @@ int  log_after_group(char *name)
         case 4:
             group_ask(name);
             break;
-        //   case 5:
-        //         chat_group(name);
-        //         break;
-        // default
-        //     break;
+        case 5:
+            chat_with(name);
+            break;
+        case 6:
+            display_group(name);
+        default:
+            break;
     }
     return choice;
 
@@ -961,7 +971,7 @@ void group_ask(char *name)
                         {
                             my_error("ask case 1",__LINE__);
                         }
-                        fprintf(stderr,"\033[32m$#%s#$\033[0m", result);  
+                        //(stderr,"\033[32m$#%s#$\033[0m", result);  
                         if(strcmp(result,"没有发送群邀请")==0)
                             printf("\t\t\t\t%s\n",result);
                         else
@@ -1051,10 +1061,227 @@ void group_ask(char *name)
 
 }
 
-/*void read_group(char *name)
+void read_group_ask(char *name)
 {
+    //printf("1066 jin\n");
+    cJSON *root=cJSON_CreateObject();
+    cJSON_AddNumberToObject(root,"type",16);
+    cJSON_AddStringToObject(root,"name",name);
+    char *out=cJSON_Print(root);
+    send(client_fd,out,strlen(out),0);
+    char result[1000];
+    memset(result,0,sizeof(result));
+    if(recv(client_fd,result,sizeof(result),0)<0)
+    {
+        my_error("read_group_ask",__LINE__);
+    }
+    printf("result %s\n");
+    if(strcmp(result,"没有收到群请求")==0)
+    {
+        printf("\t\t%s\n",result);
+        return;
+    }
+    else 
+    {
+        cJSON * recvin=cJSON_Parse(result);
+        cJSON *list=cJSON_GetObjectItem(recvin,"list");
+        cJSON *arr;
+        int size=cJSON_GetArraySize(list);
+        for(int i=0;i<size;i++)
+        {
+            arr=cJSON_GetArrayItem(list,i);
+            cJSON *name=cJSON_GetObjectItem(arr,"name");
+            printf("%d、您收到来自%s的群邀请\n",i+1,name->valuestring);
+        }
+        putchar('\n');
+    }
+    //printf("end\n");
+}
+void display_group(char *name)
+{
+    while(1)
+    {
+        system("clear");
+        cJSON *root=cJSON_CreateObject();
+        cJSON_AddStringToObject(root,"name",name);
+        cJSON_AddNumberToObject(root,"type",15);
+        char *out=cJSON_Print(root);
+        send(client_fd,out,strlen(out),0);
+        char result[10000];
+        memset(result,0,sizeof(result));
+        if(recv(client_fd,result,sizeof(result),0)<0)
+        {
+            my_error("display_group",__LINE__);
+        }
+        if(strcmp(result,"没有加入任何群")==0)
+        {
+            printf("\t\t\t\t%s",result);
+            return;
+        }
+        // memset(result,0,sizeof(result));
+        cJSON * endout=cJSON_Parse(result);
+        cJSON *list=cJSON_GetObjectItem(endout,"list");
+        cJSON *arr;
+        int size=cJSON_GetArraySize(list);
+        for(int i=0;i<size;i++)
+        {
+            arr=cJSON_GetArrayItem(list,i);
+            cJSON *name=cJSON_GetObjectItem(arr,"name");
+            printf("%d、群号:%s\n",i+1,name->valuestring);
+        }
+        /*
+        for(int i=0;i<size;i++)
+            {
+                arr=cJSON_GetArrayItem(list,i);
+                cJSON *toname=cJSON_GetObjectItem(arr,"toname");
+                cJSON *group=cJSON_GetObjectItem(arr,"group");
+                printf("%d、 你邀请%s加入群:%s\n",i+1,toname->valuestring,group->valuestring);
 
-}*/
+            }
+        */
+        printf("是否返回上一层(yes/no);");
+        char yes[100];
+        scanf(" %s%*c",yes);
+        if(strcmp(yes,"yes")==0)
+            break;
+    }
+}
+void chat_with(char *name)
+{
+    while(1)
+    {
+        system("clear");
+        int choice;
+        printf("\t\t\t\t1、聊天记录\n");
+        printf("\t\t\t\t2、群聊\n");
+        printf("\t\t\t\t3、返回上一层\n");
+        scanf(" %d%*c",&choice);
+        if(choice==3)
+            break;
+        switch(choice)
+        {
+            case 1:
+                search_groupchat(name);
+                break;
+            case 2:
+                chat_withgroup(name);
+                break;
+        }
+    }
+    
+}
+
+void search_groupchat(char *name)
+{
+    while(1)
+    {
+        char result[10000];
+        printf("\t\t\t\t请输入你想查看的群：");
+        memset(result,0,sizeof(result));
+        scanf(" %s%*c",result);
+        cJSON *root=cJSON_CreateObject();
+        cJSON_AddStringToObject(root,"group",result);
+        cJSON_AddNumberToObject(root,"type",14);
+        cJSON_AddStringToObject(root,"name",name);
+        cJSON_AddNumberToObject(root,"casenum",1);
+        char *sendout=cJSON_Print(root);
+        send(client_fd,sendout,strlen(sendout),0);
+        memset(result,0,sizeof(result));
+        if(recv(client_fd,result,sizeof(result),0)<0)
+        {
+            my_error("recv error",__LINE__);
+        }
+        if(strcmp(result,"没有聊天记录")==0)
+            printf("\t\t\t\t%s",result);
+        else 
+        {
+            cJSON *recvin=cJSON_Parse(result);
+            cJSON *list=cJSON_GetObjectItem(recvin,"list");
+            int size=cJSON_GetArraySize(list);
+            for(int i=0;i<size;i++)
+            {
+                cJSON *request= cJSON_GetArrayItem(list,i);
+                cJSON *chattime=cJSON_GetObjectItem(request,"chattime");
+                printf("%s:",chattime->valuestring);
+                cJSON *sendname=cJSON_GetObjectItem(request,"name");
+                printf("%s\n",sendname->valuestring);
+                cJSON *chat=cJSON_GetObjectItem(request,"chat");
+                printf("%s\n",chat->valuestring);
+            }
+        }
+        printf("\n是否返回上一层(yes/no):");
+        char yes[100];
+        scanf(" %s",yes);
+        if(strcmp(yes,"yes")==0)
+            break;
+    }
+    
+}
+
+void chat_withgroup(char *name)
+{
+    printf("请输入你想进入的群:");
+    char result[10000];
+    memset(result,0,sizeof(result));
+    char group[100];
+    scanf(" %s%*c",group);
+
+    while(1)
+    {
+        system("clear");
+        cJSON *root=cJSON_CreateObject();
+        cJSON_AddStringToObject(root,"group",group);
+        cJSON_AddNumberToObject(root,"type",14);
+        cJSON_AddStringToObject(root,"name",name);
+        cJSON_AddNumberToObject(root,"casenum",1);
+        char *sendout=cJSON_Print(root);
+        send(client_fd,sendout,strlen(sendout),0);
+        memset(result,0,sizeof(result));
+        if(recv(client_fd,result,sizeof(result),0)<0)
+        {
+            my_error("recv error",__LINE__);
+        }
+        if(strcmp(result,"没有聊天记录")==0)
+            printf("\t\t\t\t%s",result);
+        else 
+        {
+            cJSON *recvin=cJSON_Parse(result);
+            cJSON *list=cJSON_GetObjectItem(recvin,"list");
+            int size=cJSON_GetArraySize(list);
+            for(int i=0;i<size;i++)
+            {
+                cJSON* request=cJSON_GetArrayItem(list,i);
+                cJSON *chattime=cJSON_GetObjectItem(request,"chattime");
+                printf("%s:",chattime->valuestring);
+                cJSON *sendname=cJSON_GetObjectItem(request,"name");
+                printf("%s\n",sendname->valuestring);
+                cJSON *chat=cJSON_GetObjectItem(request,"chat");
+                printf("%s\n",chat->valuestring);
+            }
+        }
+        printf(START);
+        printf("请输入你想发送的内容(输入quit结束):");
+        memset(result,0,sizeof(result));
+        fgets(result,10000,stdin);
+        printf("1171%s",result);/////
+        if(strcmp(result,"quit\n")==0)
+        {
+            // send(client_fd,result,strlen(result),0);
+            break;
+        }
+        printf("1222\n");
+        cJSON *sendchat=cJSON_CreateObject();
+        cJSON_AddStringToObject(sendchat,"chat",result);
+        cJSON_AddNumberToObject(sendchat,"type",14);
+        cJSON_AddNumberToObject(sendchat,"casenum",2);
+        cJSON_AddStringToObject(sendchat,"name",name);
+        cJSON_AddStringToObject(sendchat,"group",group);
+        char *sendresult=cJSON_Print(sendchat);
+        printf("1184%s\n",sendresult);
+        send(client_fd,sendresult,strlen(sendresult),0);
+    }
+
+}
 void log_up(int client_fd)//注册
 {
     char passwd1[20],passwd2[20],name[100];
