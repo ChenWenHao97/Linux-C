@@ -23,10 +23,11 @@
 #define USER "root"
 #define PASSWD "173874"
 #define DB "TESTDB"
-#define mouth 45077
+#define mouth 4507
 void my_error(char *string,int line);
 int epoll_fd;
 void *thread(void);
+void send_file(char *buf,int fd);
 void log_in(char *buf,int fd);
 void log_up(char *buf,int fd);
 void find_passwd(char *buf,int fd);
@@ -52,6 +53,10 @@ void chat_withgroup(char *buf,int fd);
 void chat_with(char *buf,int fd);
 void display_group(char *buf,int fd);
 void read_group_ask(char *buf,int fd);
+void readfile(char *buf,int fd);
+void downfile(char *buf,int fd);
+
+
 typedef struct LINK_USER {
     char name[20];
     int status;
@@ -205,6 +210,15 @@ void *thread(void )
                     break;
                case 16:
                     read_group_ask(buf,events[i].data.fd);
+                    break;
+               case 17:
+                    send_file(buf,events[i].data.fd);
+                    break;
+               case 18:
+                    readfile(buf,events[i].data.fd);
+                    break;
+               case 19:
+                    downfile(buf,events[i].data.fd);
                     break;
                case -1:
                     exit_out(buf,events[i].data.fd);
@@ -1260,6 +1274,199 @@ void find_passwd(char *buf,int fd)
     mysql_free_result(res);
 }
 
+void send_file(char *buf,int fd)
+{
+    fprintf(stderr,"here\n");
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *name=cJSON_GetObjectItem(root,"name");
+    cJSON *size=cJSON_GetObjectItem(root,"size");
+    cJSON *friend=cJSON_GetObjectItem(root,"friend");
+    cJSON *file=cJSON_GetObjectItem(root,"fname");
+
+    int sendfd;
+    FILE *fp;
+    int flag;
+    int sum=0;
+    char result[1002];
+    memset(result,0,sizeof(result));
+    sprintf(result,"insert into filetable(name,fname,friend values(\"%s\",\"%s\",\"%s\");",
+                    name->valuestring,file->valuestring,friend->valuestring);
+    printf("#%s#\n",result);
+
+    cJSON *cans=cJSON_CreateObject();
+    int ret=0;
+
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));
+        printf("文件重名\n");
+        ret++;
+    }
+    memset(result,0,sizeof(result));
+    
+    sprintf(result,"select * from filetable where fname=\"%s\";",
+            file->valuestring);
+    fprintf(stderr,"\033[32m#%s#\033[0m\n",result);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));       
+        printf("1305 错误\n");
+        ret++;
+    }
+    
+    char id[1000];
+    MYSQL_RES *res=mysql_store_result(mysql);
+    MYSQL_ROW row;
+    while(row=mysql_fetch_row(res))
+    {
+        strcpy(id,row[0]);
+    }
+    char bufp[256];
+    fprintf(stderr,"%s",id);
+    if ((fp=fopen(id,"w+")) == NULL)
+    {
+        ret++;
+    }
+    
+    cJSON_AddNumberToObject(cans,"res",ret);
+    cJSON_AddStringToObject(cans,"fid",id);
+    char *sendresult=cJSON_Print(cans);
+    fprintf(stderr,"\033[33m[%s]\033[0m\n",sendresult);       
+    
+    send(fd,sendresult,strlen(sendresult),0);
+    if (ret!=0) {
+        if (fp!=NULL)
+            fclose(fp);
+        return;
+    }
+        
+    while(1)
+    {
+        if(sum>=size->valueint)
+            break;
+        memset(bufp,0,sizeof(bufp));
+        int needread=(size->valueint-sum>=256)?256:size->valueint-sum;        
+    
+        sum+=recv(fd,bufp,needread,0);//返回值是大小
+            perror("recv");
+        fwrite(bufp,needread,1,fp);
+        
+        if(sum>=size->valueint)
+            break;
+    }
+    fclose(fp);
+}
+
+
+void readfile(char *buf,int fd)
+{
+    char result[100];
+    memset(result,0,sizeof(result));
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *friend=cJSON_GetObjectItem(root,"friend");
+    sprintf(result,"select * from filetable where friend=\"%s\";",friend->valuestring);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        my_error("select file",__LINE__);
+    }
+    int jdg=mysql_affected_rows(mysql);
+    fprintf(stderr,"\033[33m[%d]\033[0m\n",__LINE__);
+    if(jdg==0)
+    {
+        send(fd,"没有人给您发文件",40,0);
+        return;
+    }
+    MYSQL_RES *res=mysql_store_result(mysql);
+    MYSQL_ROW row;
+    MYSQL *arr,*list;
+    cJSON *sendout=cJSON_CreateObject();
+    cJSON_AddItemToObject(sendout,"list",arr=cJSON_CreateArray());
+    while(row=mysql_fetch_row(res))
+    {
+        cJSON *newone;
+        cJSON_AddItemToArray(arr,newone=cJSON_CreateObject());
+        cJSON_AddStringToObject(newone,"fname",row[2]);
+        cJSON_AddStringToObject(newone,"name",row[1]);
+    }
+    char *read=cJSON_Print(sendout);
+    send(fd,read,strlen(read),0);
+    mysql_free_result(res);
+}
+
+void downfile(char *buf,int fd)
+{
+    cJSON *root=cJSON_Parse(buf);
+    cJSON *friend=cJSON_GetObjectItem(root,"friend");
+    cJSON *filename=cJSON_GetObjectItem(root,"filename");
+    char result[100];
+    memset(result,0,sizeof(result));
+    sprintf(result,"select * from filetable where friend=\"%s\" and fname=\"%s\";"
+    ,friend->valuestring,filename->valuestring);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));
+    }
+    MYSQL_RES *res=mysql_store_result(mysql);
+    int jdg=mysql_affected_rows(mysql);
+    if(jdg==0)
+    {
+        send(fd,"输入信息有误",30,0);
+        mysql_free_result(res);
+        return;
+    }
+    else
+    {
+        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        send(fd,"输入信息正确",30,0);
+        MYSQL_ROW row;
+        FILE *fp;
+        char idname[100];
+        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        while(row=mysql_fetch_row(res))
+            strcpy(idname,row[0]);
+        fp=fopen(idname,"r");
+        fseek(fp, 0L, SEEK_END); 
+        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        int size = ftell(fp);
+        char buf[256];
+        fseek(fp, 0L, SEEK_SET);
+        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        send(fd,(void*)&size,sizeof(size),0);
+        perror("send");
+        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        int sum=0;
+        char yes[100];
+        if(recv(fd,yes,sizeof(yes),0)<0)
+        {
+            my_error("recv yes",__LINE__);
+        }
+        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        if(strcmp(yes,"no")==0)
+            return;
+        while(1)
+        {
+            if(sum>=size)
+                break;
+            memset(buf,0,sizeof(buf));
+            // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+            int needread=(size-sum>=256)?256:size-sum;
+            fread(buf,needread,1,fp);
+            sum+=send(fd,buf,needread,0);
+            // fprintf(stderr,"\033[33m[%d,%d]\033[0m",__LINE__,sum);
+            if(sum>=size)
+                break;
+        }
+        // fprintf(stderr,"\033[33m[%d,%d]\033[0m",__LINE__,sum);      
+        mysql_free_result(res);
+    }
+    memset(result,0,sizeof(result));
+    sprintf(result,"delete from filetable where fname=\"%s\";",filename->valuestring);
+    if(mysql_real_query(mysql,result,strlen(result))!=0)
+    {
+        fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));
+    }
+
+}
 void my_error(char *string,int line)
 {
     fprintf(stderr,"line:%d",line);

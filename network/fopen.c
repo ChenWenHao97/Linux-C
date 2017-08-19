@@ -26,7 +26,7 @@ int main()
     }
     else
     {
-        tofp=fopen(to,"a+");
+        tofp=fopen(to,"w+");
 
         while(fgets(buf,100,fp)!=NULL)
         {

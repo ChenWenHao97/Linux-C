@@ -1,12 +1,12 @@
 CFLAG=-lcjson -lmysqlclient -lpthread
 
 result:myserver.o myclient.o
-	gcc -o server myserver.o $(CFLAG) 
-	gcc -o client myclient.o $(CFLAG)
+	gcc -o server myserver.o $(CFLAG) -g
+	gcc -o client myclient.o $(CFLAG) -g
 myserver.o:myserver.c
-	gcc -c myserver.c $(CFLAG)
+	gcc -c myserver.c $(CFLAG) -g
 myclient.o:myclient.c
-	gcc -c myclient.c $(CFLAG)
+	gcc -c myclient.c $(CFLAG) -g
 clean:
 	rm client server
 	rm myclient.o myserver.o
