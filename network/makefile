@@ -1,4 +1,5 @@
-CFLAG=-lcjson -lmysqlclient -lpthread
+CFLAG=-lcjson -lmysqlclient -lpthread -I /usr/include/mysql
+
 
 result:myserver.o myclient.o
 	gcc -o server myserver.o $(CFLAG) -g
