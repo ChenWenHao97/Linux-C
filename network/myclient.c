@@ -1775,10 +1775,11 @@ void my_error(char *string,int line)
     exit(1);
 }
 
-void get_filename(char *name) {
+void get_filename(char *name) //如果不改变输入的路径名，下载者会同样下载在相同目录
+{
     char *buf = (char *)malloc(strlen(name));
     strcpy(buf, name);
-    char *pt = strrchr(buf, '/');
+    char *pt = strrchr(buf, '/');//strrchr返回最后一次查询字符的位置
     if (pt != NULL) {
         strcpy(name, pt + 1);
     }
