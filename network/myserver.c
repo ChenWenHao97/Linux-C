@@ -23,7 +23,7 @@
 #define USER "root"
 #define PASSWD "173874"
 #define DB "TESTDB"
-#define mouth 4507
+#define mouth 45077
 void my_error(char *string,int line);
 int epoll_fd;
 void *thread(void);
@@ -41,7 +41,7 @@ void exit_out(char *buf,int fd);
 void delete_friend(char *buf,int fd);
 void read_message(char *buf,int fd);
 void search_chat(char *buf,int fd);
-void chat_withfiend(char *buf,int fd);
+void chat_withfriend(char *buf,int fd);
 char * get_time(void);
 void chat(char *buf,int fd);
 void create_group(char *buf,int fd);
@@ -518,7 +518,7 @@ void friend_ask(char *buf,int fd)
                     send(fd,"您没有收到好友请求",30,0);
                     mysql_free_result(res);     
                }
-               fprintf(stderr,"521\n");
+              // fprintf(stderr,"521\n");
            }
             break;
         }
@@ -1008,14 +1008,14 @@ void group_ask(char *buf,int fd)
                     }
                     if(strcmp(result,"quit")==0)
                         break;
-                    printf("932 %s",result);
+                    //printf("932 %s",result);
                     cJSON *recvout=cJSON_Parse(result);
                     cJSON *agree=cJSON_GetObjectItem(recvout,"agree");
                     cJSON *name=cJSON_GetObjectItem(recvout,"name");
                     memset(result,0,sizeof(result));
                     sprintf(result,"insert into %s_group values(\"%s\",0,1,0);",
                     name->valuestring,agree->valuestring);
-                     printf("939 %s",result);
+                    // printf("939 %s",result);
                     if(mysql_real_query(mysql,result,strlen(result))!=0)
                     {
                         my_error("group ask 2",__LINE__);
@@ -1072,16 +1072,20 @@ void search_groupchat(char *buf,int fd)
     sprintf(result,"select * from allgroup;");
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
+        printf("1075 %s\n",result);
         send(fd,"输入群号有误",20,0);
         //printf("1066\n");
         return;
     }
+    MYSQL_RES *rest = mysql_store_result(mysql);
+    mysql_free_result(rest);
     memset(result,0,sizeof(result));
     sprintf(result,"select * from %s;",group->valuestring);
     printf("result %s\n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
-        send(fd,"输入群号有误",20,0);
+        fprintf(stderr,"[break:%d]{%s}",__LINE__,mysql_error(mysql));
+        send(fd,"没有聊天记录",30,0);
         //my_error("search chat",__LINE__);
         return;
     }
@@ -1090,6 +1094,7 @@ void search_groupchat(char *buf,int fd)
     int jdg=mysql_affected_rows(mysql);
     if(jdg==0)
     {
+        fprintf(stderr,"[break:%d]",__LINE__);
         send(fd,"没有聊天记录",30,0);
         return;
     }
@@ -1138,13 +1143,18 @@ void chat_withgroup(char *buf,int fd)
     {
         flag1=1;
         send(fd,"该群不存在",20,0);
+        //mysql_free_result(res);
         return;
     }
+    MYSQL_RES *res = mysql_store_result(mysql);
+    mysql_free_result(res);
     memset(result,0,sizeof(result));
     sprintf(result,"insert into %s (name,chat) values(\"%s\",\"%s\");",group->valuestring,
     name->valuestring,chat->valuestring);
+    printf("result 1147 %s\n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
+        fprintf(stderr,"\033[33m[%s]\033[0m", mysql_error(mysql));
         my_error("search chat",__LINE__);
     }
 }
@@ -1161,11 +1171,11 @@ void display_group(char *buf,int fd)
     {
         my_error("display ",__LINE__);
     }
-    printf("1063\n");
+    //printf("1063\n");
     MYSQL_RES *res=mysql_store_result(mysql);
     MYSQL_ROW *row,*rows,clo;
     int jdg=mysql_affected_rows(mysql);
-    printf("1067 %d\n",jdg);
+    //printf("1067 %d\n",jdg);
     if(jdg==0)
     {
         send(fd,"没有加入任何群",30,0);
@@ -1196,7 +1206,9 @@ void read_group_ask(char *buf,int fd)
     //printf("%s\n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
-        my_error("read_group",__LINE__);
+        //my_error("read_group",__LINE__);
+        send(fd,"没有收到群请求",30,0);
+        return;
     }
     MYSQL_RES *res=mysql_store_result(mysql);
     MYSQL_ROW row;
@@ -1277,8 +1289,8 @@ void create_table(char *name)//建立表格
     memset(result,0,sizeof(result));
     //创建群列表
     sprintf(result,"create table %s_group ( group_name varchar(20) unique,owner int,status int,read_message"
-    "int)DEFAULT CHARSET=utf8;",name);
-    //printf("964 %s",result);
+    " int)DEFAULT CHARSET=utf8;",name);
+    printf("964 %s",result);
     if(mysql_real_query(mysql,result,sizeof(result))!=0)
     {
         my_error("create self table",__LINE__); 
@@ -1339,16 +1351,16 @@ void send_file(char *buf,int fd)
     int sum=0;
     char result[1002];
     memset(result,0,sizeof(result));
-    sprintf(result,"insert into filetable(name,fname,friend values(\"%s\",\"%s\",\"%s\");",
+    sprintf(result,"insert into filetable(name,fname,friend) values(\"%s\",\"%s\",\"%s\");",
                     name->valuestring,file->valuestring,friend->valuestring);
-    printf("#%s#\n",result);
+    //printf("#%s#\n",result);
 
     cJSON *cans=cJSON_CreateObject();
     int ret=0;
 
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
-        fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));
+        //fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));
         printf("文件重名\n");
         ret++;
     }
@@ -1356,23 +1368,24 @@ void send_file(char *buf,int fd)
     
     sprintf(result,"select * from filetable where fname=\"%s\";",
             file->valuestring);
-    fprintf(stderr,"\033[32m#%s#\033[0m\n",result);
+    //fprintf(stderr,"\033[32m#%s#\033[0m\n",result);
     if(mysql_real_query(mysql,result,strlen(result))!=0)
     {
         fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));       
-        printf("1305 错误\n");
+        //printf("1305 错误\n");
         ret++;
     }
     
-    char id[1000];
+    char id[1000]={0};
     MYSQL_RES *res=mysql_store_result(mysql);
     MYSQL_ROW row;
     while(row=mysql_fetch_row(res))
     {
         strcpy(id,row[0]);
     }
+    mysql_free_result(res);
     char bufp[256];
-    fprintf(stderr,"%s",id);
+    //fprintf(stderr,"%s",id);
     if ((fp=fopen(id,"w+")) == NULL)
     {
         ret++;
@@ -1381,7 +1394,7 @@ void send_file(char *buf,int fd)
     cJSON_AddNumberToObject(cans,"res",ret);
     cJSON_AddStringToObject(cans,"fid",id);
     char *sendresult=cJSON_Print(cans);
-    fprintf(stderr,"\033[33m[%s]\033[0m\n",sendresult);       
+    //fprintf(stderr,"\033[33m[%s]\033[0m\n",sendresult);       
     
     send(fd,sendresult,strlen(sendresult),0);
     if (ret!=0) {
@@ -1398,7 +1411,7 @@ void send_file(char *buf,int fd)
         int needread=(size->valueint-sum>=256)?256:size->valueint-sum;        
     
         sum+=recv(fd,bufp,needread,0);//返回值是大小
-            perror("recv");
+            //perror("recv");
         fwrite(bufp,needread,1,fp);
         
         if(sum>=size->valueint)
@@ -1420,7 +1433,7 @@ void readfile(char *buf,int fd)
         my_error("select file",__LINE__);
     }
     int jdg=mysql_affected_rows(mysql);
-    fprintf(stderr,"\033[33m[%d]\033[0m\n",__LINE__);
+    //fprintf(stderr,"\033[33m[%d]\033[0m\n",__LINE__);
     if(jdg==0)
     {
         send(fd,"没有人给您发文件",40,0);
@@ -1466,31 +1479,28 @@ void downfile(char *buf,int fd)
     }
     else
     {
-        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
         send(fd,"输入信息正确",30,0);
         MYSQL_ROW row;
         FILE *fp;
         char idname[100];
-        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
         while(row=mysql_fetch_row(res))
             strcpy(idname,row[0]);
         fp=fopen(idname,"r");
         fseek(fp, 0L, SEEK_END); 
-        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+
         int size = ftell(fp);
         char buf[256];
         fseek(fp, 0L, SEEK_SET);
-        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
         send(fd,(void*)&size,sizeof(size),0);
         perror("send");
-        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+
         int sum=0;
         char yes[100];
         if(recv(fd,yes,sizeof(yes),0)<0)
         {
             my_error("recv yes",__LINE__);
         }
-        // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        
         if(strcmp(yes,"no")==0)
             return;
         while(1)
@@ -1498,15 +1508,15 @@ void downfile(char *buf,int fd)
             if(sum>=size)
                 break;
             memset(buf,0,sizeof(buf));
-            // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+            
             int needread=(size-sum>=256)?256:size-sum;
             fread(buf,needread,1,fp);
             sum+=send(fd,buf,needread,0);
-            // fprintf(stderr,"\033[33m[%d,%d]\033[0m",__LINE__,sum);
+            
             if(sum>=size)
                 break;
         }
-        // fprintf(stderr,"\033[33m[%d,%d]\033[0m",__LINE__,sum);      
+        remove(idname);
         mysql_free_result(res);
     }
     memset(result,0,sizeof(result));
@@ -1515,7 +1525,7 @@ void downfile(char *buf,int fd)
     {
         fprintf(stderr,"\033[33m%s\033[0m\n",mysql_error(mysql));
     }
-
+    
 }
 void my_error(char *string,int line)
 {

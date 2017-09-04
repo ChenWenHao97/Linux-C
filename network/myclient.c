@@ -19,7 +19,7 @@
 #include<cJSON.h>
 #include<pthread.h>
 
-#define mouth 4507
+#define mouth 45077
 
 //向上移动光标 cursor_up(3); 代表向上移动3.
 #define cursor_up(n) \
@@ -32,6 +32,7 @@
     fprintf(stderr, "\033[%dC", (n))
 #define START "\t************************************************************************************\n"
 
+void get_filename(char *name);    
 int getch();
 void log_in(int client_fd);
 void log_up(int client_fd);
@@ -277,6 +278,7 @@ void log_after_ui(char *name)//登录之后的界面
                 {
                     while(1)
                     {
+                        system("clear");
                         printf("\t\t\t\t1、给别人发文件\n");
                         printf("\t\t\t\t2、接收文件\n");
                         printf("\t\t\t\t3、返回上一层\n");
@@ -403,9 +405,11 @@ void add_friend(char *name)
     while(1)
     {
         system("clear");
-        printf("\t\t\t\t请输入您要添加好友的姓名:");
+        printf("\t\t\t\t请输入您要添加好友的姓名(退出请输入quit):");
         char toname[100];
         scanf(" %s",toname);
+        if(strcmp(toname,"quit")==0)
+            break;
         cJSON * root=cJSON_CreateObject();
         cJSON_AddStringToObject(root,"toname",toname);
         cJSON_AddStringToObject(root,"fromname",name);
@@ -934,8 +938,8 @@ void manage_group(char *name)
                         {
                             my_error("manage case 1",__LINE__);
                         }
-                        printf(" %s",people);
-                        printf("是否退出(yes/no):");
+                        printf(" \t\t\t%s",people);
+                        printf("\t\t\t是否退出(yes/no):");
                         char yes[100];
                         scanf(" %s%*c",yes);
                         if(strcmp(yes,"yes")==0)
@@ -967,9 +971,9 @@ void manage_group(char *name)
                     {
                         my_error("manage case 2",__LINE__);
                     }
-                    printf("%s\n",people);
+                    printf("\t\t\t%s\n",people);
                     memset(people,0,sizeof(people));
-                    printf("是否返回上一层(yes/no):");
+                    printf("\t\t\t是否返回上一层(yes/no):");
                     scanf(" %s%*c",people);
                     if(strcmp(people,"yes")==0)
                         break;
@@ -987,7 +991,7 @@ void group_ask(char *name)
     {
         system("clear");
         printf("\t\t\t\t1、您发送的群请求\n");
-        printf("\t\t\t\t2、您收到的好友请求\n");
+        printf("\t\t\t\t2、您收到的群请求\n");
         printf("\t\t\t\t3、返回上一层\n");
         int choice;
         scanf(" %d%*c",&choice);
@@ -1025,7 +1029,7 @@ void group_ask(char *name)
                                 arr=cJSON_GetArrayItem(list,i);
                                 cJSON *toname=cJSON_GetObjectItem(arr,"toname");
                                 cJSON *group=cJSON_GetObjectItem(arr,"group");
-                                printf("%d、 你邀请%s加入群:%s\n",i+1,toname->valuestring,group->valuestring);
+                                printf("\t\t%d、 你邀请%s加入群:%s\n",i+1,toname->valuestring,group->valuestring);
                             }
                         }
                         printf("\t\t\t\t是否退出(yes/no):");
@@ -1067,12 +1071,13 @@ void group_ask(char *name)
                         arr=cJSON_GetArrayItem(list,i);
                         cJSON *fromname=cJSON_GetObjectItem(arr,"fromname");
                         cJSON *group=cJSON_GetObjectItem(arr,"group");
-                        printf("%d、 %s邀请你加入群:%s\n",i+1,fromname->valuestring,group->valuestring);
+                        printf("\t\t%d、 %s邀请你加入群:%s\n",i+1,fromname->valuestring,group->valuestring);
 
                     }
                     while(1)
                     {
-                        printf("请输入你想加入的群号码(quit退出):");
+                        system("clear");
+                        printf("\t\t请输入你想加入的群号码(quit退出):");
                         char agree[100];
                         scanf(" %s%*c",agree);
                         if(strcmp(agree,"quit")==0)
@@ -1087,7 +1092,7 @@ void group_ask(char *name)
                         cJSON_AddNumberToObject(basesend,"casenum",2);
                         char *sendagree=cJSON_Print(basesend);
                         send(client_fd,sendagree,strlen(sendagree),0);
-                        printf("发送成功！\n");
+                        printf("\t\t\t\t发送成功！\n");
                         sleep(1);
                     }
                 }
@@ -1166,9 +1171,9 @@ void display_group(char *name)
         {
             arr=cJSON_GetArrayItem(list,i);
             cJSON *name=cJSON_GetObjectItem(arr,"name");
-            printf("%d、群号:%s\n",i+1,name->valuestring);
+            printf("\t\t\t%d、群号:%s\n",i+1,name->valuestring);
         }
-        printf("是否返回上一层(yes/no);");
+        printf("\t\t\t是否返回上一层(yes/no);");
         char yes[100];
         scanf(" %s%*c",yes);
         if(strcmp(yes,"yes")==0)
@@ -1226,7 +1231,7 @@ void search_groupchat(char *name)
         if(strcmp(result,"没有聊天记录")==0||strcmp(result,"输入群号有误")==0)
             {
                 printf("\n\t\t\t\t\n%s",result);
-                sleep(1);
+                //sleep(1);
             }
         else 
         {
@@ -1244,7 +1249,7 @@ void search_groupchat(char *name)
                 printf("%s\n",chat->valuestring);
             }
         }
-        printf("\n是否返回上一层(yes/no):");
+        printf("\n\n\t\t\t是否返回上一层(yes/no):");
         char yes[100];
         scanf(" %s",yes);
         if(strcmp(yes,"yes")==0)
@@ -1275,9 +1280,15 @@ void chat_withgroup(char *name)
         {
             my_error("recv error",__LINE__);
         }
-        if(strcmp(result,"没有聊天记录")==0||strcmp(result,"输入群号有误")==0)
+        if(strcmp(result,"没有聊天记录")==0)
         {
-            printf("\t\t\t\t%s",result);
+            printf("\t\t\t\t%s\n",result);
+            //sleep(1);
+            //return;
+        }
+        else if(strcmp(result,"输入群号有误")==0)
+        {
+            printf("\t\t\t\t%s\n",result);
             sleep(1);
             return;
         }
@@ -1331,20 +1342,22 @@ void send_file(char *name)
     FILE *fp;
     printf("请输入你要发送文件的名字:");
     scanf(" %s%*c",file);
-    fprintf(stderr,"\033[34m[end]\033[0m;");
     printf("请输入你要发送的好友:");
     scanf(" %s%*c",friend);
-    fprintf(stderr,"\033[34m[end]\033[0m;");
     fp = fopen(file, "r");    
     fseek(fp, 0L, SEEK_END);//SEEK_END是文件末尾，0L是定位在第0个位置，表示遍历整个文件    
     int size = ftell(fp); //前面说过FILE是一个结构体，所以fseek之后就储存了文件信息   
     fclose(fp);
+
+    char sendfilename[100];
+    strcpy(sendfilename, file);
+    get_filename(sendfilename);
     cJSON *root=cJSON_CreateObject();
     cJSON_AddStringToObject(root,"name",name);//人
     cJSON_AddStringToObject(root,"friend",friend);
     cJSON_AddNumberToObject(root,"type",17);
     cJSON_AddNumberToObject(root,"size",size);
-    cJSON_AddStringToObject(root,"fname",file);
+    cJSON_AddStringToObject(root,"fname",sendfilename);
     char *sendout=cJSON_Print(root);
 
     if((fp=fopen(file,"r"))==NULL)
@@ -1355,31 +1368,39 @@ void send_file(char *name)
 
     send(client_fd,sendout,strlen(sendout),0);
     char res[10000];
-    fprintf(stderr,"\033[32mwaiting\033[0m");
+  
     recv(client_fd,res,sizeof(res),0);
-    fprintf(stderr,"\033[33m[%s]\033[0m\n",res);       
+    
     
     cJSON *root2=cJSON_Parse(res);
     cJSON *canst=cJSON_GetObjectItem(root2,"res");
     cJSON *fid=cJSON_GetObjectItem(root2,"fid");
     if (canst->valueint != 0)
     {
-        printf("文件在服务器上重复！");
+        printf("\n\n\n\t\t\t\t文件在服务器上重复！!!\n");
+        sleep(1);
+        system("clear");
         return;
     }
-
+    system("clear");
+    printf("\n\n\n\t\t\t\t正在发送文件！！！\n");
+    sleep(5)
     while(1)
     {
         if(sum>=size)
             break;
         memset(buf,0,sizeof(buf));
-        int needread=(size-sum>=256)?256:size-sum;
-        fread(buf,needread,1,fp);
+        int needread=(size-sum>=256)?256:size-sum;//要多少传多少
+        fread(buf,needread,1,fp);//如果是fscanf会遇见空格或换行停止！！！！
         sum+=send(client_fd,buf,needread,0);
         if(sum>=size)
             break;
     }
-    printf("发送结束!");//你的文件编号是:%s",fid->valuestring);
+
+    sleep(1);
+    system("clear");
+    printf("\n\n\n\t\t\t\t发送成功！!\n");//你的文件编号是:%s",fid->valuestring);
+    sleep(1);
     fclose(fp);
     sleep(1);
 }
@@ -1422,7 +1443,8 @@ void down_file(char *name)
 {
     system("clear");
     char filename[100];
-    printf("请输入你要接受的文件");
+    readfile(name);
+    printf("\n\n\t\t\t请输入你要接受的文件:");
     scanf("%s%*c",filename);
     cJSON *root=cJSON_CreateObject();
     cJSON_AddNumberToObject(root,"type",19);
@@ -1445,13 +1467,13 @@ void down_file(char *name)
         int size;
         int sum=0;
         char buf[256];
-        fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        
         if(recv(client_fd,(void*)&size,sizeof(size),0)<0)
         {
             fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
             my_error("size recv",__LINE__);
         }
-        fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+        //fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
         FILE *fp=fopen(filename,"w+");
         if(fp==NULL)
         {
@@ -1459,8 +1481,10 @@ void down_file(char *name)
             send(client_fd,"no",10,0);
             return;
         }
-        fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
+       // fprintf(stderr,"\033[33m[%d]\033[0m",__LINE__);
         send(client_fd,"yes",10,0);
+        system("clear");
+        printf("\n\n\n\t\t\t\t正在接受文件!!!\n");
         while(1)
         {
             if(sum>=size)
@@ -1472,7 +1496,9 @@ void down_file(char *name)
             if(sum>=size)
                 break;
         }
-        printf("接受成功!");
+        system("clear");
+        printf("\n\n\t\t\t接受成功!!!\n");
+        sleep(1);
     }
 }
 
@@ -1747,4 +1773,14 @@ void my_error(char *string,int line)
     fprintf(stderr,"line:%d ",line);
     perror(string);
     exit(1);
+}
+
+void get_filename(char *name) {
+    char *buf = (char *)malloc(strlen(name));
+    strcpy(buf, name);
+    char *pt = strrchr(buf, '/');
+    if (pt != NULL) {
+        strcpy(name, pt + 1);
+    }
+    free(buf);
 }
